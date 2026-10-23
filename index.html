@@ -402,9 +402,6 @@
     save(state);
   }
 
-  if (state.goal > 0) showCounter();
-  else showSetup();
-
   document.getElementById("btnSetGoal").addEventListener("click", () => {
     const g = Math.max(1, Math.min(9999, Math.floor(Number(document.getElementById("goalInput").value) || 0)));
     if (!g) return;
@@ -584,6 +581,10 @@
     particles = [];
     critters = [];
   }
+
+  // Boot after FX helpers exist (showSetup calls stopFx)
+  if (state.goal > 0) showCounter();
+  else showSetup();
 
   /* —— Pattern tables (unchanged logic) —— */
   function buildInc(factor, rounds, stagger) {
