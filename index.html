@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3efe8">
+<title>鈎針計行同加針指南</title>
+<style>
+  :root {
+    --bg: #f3efe8;
+    --surface: #fffaf4;
+    --surface-float: #ffffff;
+    --ink: #2a241c;
+    --muted: #7a6f62;
+    --faint: #a89b8c;
+    --line: rgba(42, 36, 28, 0.08);
+    --accent: #c45c26;
+    --accent-ink: #fff8f2;
+    --shadow: 0 12px 40px rgba(42, 36, 28, 0.08), 0 2px 8px rgba(42, 36, 28, 0.04);
+    --radius: 24px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "PingFang HK", "Noto Sans TC", system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #ffe8d4 0%, transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, #e8f0ff 0%, transparent 50%),
+      var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap {
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 20px 16px calc(28px + var(--safe-b));
+  }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 18px;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(10px);
+    padding: 6px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--surface-float);
+    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(42,36,28,0.06);
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--surface-float);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .count-screen {
+    aspect-ratio: 1 / 1;
+    max-height: 340px;
+    width: 100%;
+    border-radius: 28px;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(160deg, #ffffff 0%, #fff6ec 100%);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .count-screen:active {
+    transform: scale(0.985);
+    box-shadow: 0 6px 20px rgba(42, 36, 28, 0.06);
+  }
+  .count-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .count-num {
+    font-size: clamp(4.5rem, 22vw, 5.5rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .count-hint {
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .fat {
+    flex: 1 1 140px;
+    min-height: 58px;
+    border: 0;
+    border-radius: 18px;
+    font: inherit;
+    font-weight: 700;
+    font-size: 1.05rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: var(--shadow);
+  }
+  .fat.quiet {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .fat.danger {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .note {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .controls {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  label {
+    display: grid;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  select, input[type="number"] {
+    font: inherit;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 48px;
+  }
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 10px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .chip.on {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .callout {
+    background: #fff7ef;
+    border: 1px solid rgba(196, 92, 38, 0.15);
+    border-radius: 16px;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .callout strong { color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll {
+    max-height: 52vh;
+    overflow: auto;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>鈎針計行同加針指南</h1>
+    <p class="sub">撳大數字就加一行；減同清除用下面掣。</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="counter" type="button">計行</button>
+      <button class="tab" data-tab="circle" type="button">平面圓</button>
+      <button class="tab" data-tab="sphere" type="button">球體</button>
+      <button class="tab" data-tab="effects" type="button">加針效果</button>
+    </div>
+
+    <section class="panel active" id="panel-counter">
+      <button class="count-screen" id="countScreen" type="button" aria-label="撳一下加一行">
+        <span class="count-label">已鈎行數 · 撳數字 +1</span>
+        <span class="count-num" id="countNum">0</span>
+        <span class="count-hint">撳畫面加一行</span>
+      </button>
+      <div class="btn-row">
+        <button class="fat quiet" id="btnMinus" type="button">減一行</button>
+        <button class="fat danger" id="btnClear" type="button">清除</button>
+      </div>
+      <p class="note">計數會記喺呢部手機／電腦（本機儲存），唔會上傳。</p>
+    </section>
+
+    <section class="panel" id="panel-circle">
+      <div class="card">
+        <div class="callout"><strong>規律：</strong>每圈加固定針數。短針平面圓多用每圈 +6；想更平可用 +8。起始針數通常等於呢個倍數。</div>
+        <div class="controls">
+          <div>
+            <div class="chip-row" id="circleFactor"></div>
+          </div>
+          <label>加針圈數（含第1圈）
+            <input type="number" id="circleRounds" min="1" max="24" value="6">
+          </label>
+          <button class="chip" id="circleStagger" type="button">錯開加針：開</button>
+        </div>
+        <p class="note" id="circleSummary"></p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>圈</th><th>針數</th><th>做法</th></tr></thead>
+            <tbody id="circleBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-sphere">
+      <div class="card">
+        <div class="callout"><strong>公式：</strong>每圈 +6 加到想要闊度 → 平織約「加針圈數 + 1」圈 → 對稱每圈 −6 減返，塞棉後收口。</div>
+        <div class="controls">
+          <div class="chip-row" id="sphereFactor"></div>
+          <label>加針圈數（定球體大細）
+            <input type="number" id="sphereRounds" min="1" max="24" value="6">
+          </label>
+        </div>
+        <p class="note" id="sphereSummary"></p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>圈</th><th>針數</th><th>階段／做法</th></tr></thead>
+            <tbody id="sphereBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-effects">
+      <div class="card">
+        <p class="note" style="margin-top:0">同一種短針、螺旋織，改變「每圈加幾多針」會變形狀。倍數通常等於第 1 圈針數。</p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>每圈加針</th><th>用途</th><th>效果</th></tr></thead>
+            <tbody>
+              <tr><td class="num">+3</td><td>尖錐</td><td>好尖／圓錐</td></tr>
+              <tr><td class="num">+4</td><td>微圓錐</td><td>略尖，淺碗過渡</td></tr>
+              <tr><td class="num">+5</td><td>碗／穹頂</td><td>向上收成碗形</td></tr>
+              <tr><td class="num">+6</td><td>球體</td><td>公仔頭、球最常用</td></tr>
+              <tr><td class="num">+7</td><td>近平面</td><td>接近平圓，略鬆</td></tr>
+              <tr><td class="num">+8</td><td>平面圓</td><td>杯墊、granny 底；最平</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout" style="margin-top:12px;margin-bottom:0">波浪＝針太多；收成碗＝針太少。球體腰平織太少會扁，太多會變桶。</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function () {
+  const KEY = "crochet-row-count-v1";
+  let count = Number(localStorage.getItem(KEY) || 0) || 0;
+  const countNum = document.getElementById("countNum");
+  function renderCount() {
+    countNum.textContent = String(count);
+    localStorage.setItem(KEY, String(count));
+  }
+  renderCount();
+  document.getElementById("countScreen").addEventListener("click", () => {
+    count += 1;
+    renderCount();
+  });
+  document.getElementById("btnMinus").addEventListener("click", () => {
+    count = Math.max(0, count - 1);
+    renderCount();
+  });
+  document.getElementById("btnClear").addEventListener("click", () => {
+    count = 0;
+    renderCount();
+  });
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    });
+  });
+
+  function buildInc(factor, rounds, stagger) {
+    const rows = [];
+    for (let r = 1; r <= rounds; r++) {
+      const stitches = factor * r;
+      let how = "";
+      if (r === 1) how = "魔術環：" + factor + " 短針";
+      else if (r === 2) how = "每針加針 ×" + factor;
+      else if (stagger && r % 2 === 0) {
+        const half = Math.floor((r - 2) / 2);
+        const mid = r - 2;
+        how = "錯開：" + half + "短針,加針,(" + mid + "短針,加針)×" + (factor - 1) + "," + half + "短針";
+      } else how = "(" + (r - 2) + " 短針, 加針) ×" + factor;
+      rows.push({ round: r, stitches, how });
+    }
+    return rows;
+  }
+
+  let circleFactor = 6;
+  let stagger = true;
+  const circleFactorEl = document.getElementById("circleFactor");
+  [6, 8, 5, 7].forEach((n) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (n === 6 ? " on" : "");
+    b.textContent = "每圈+" + n;
+    b.addEventListener("click", () => {
+      circleFactor = n;
+      circleFactorEl.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      renderCircle();
+    });
+    circleFactorEl.appendChild(b);
+  });
+  const circleStaggerBtn = document.getElementById("circleStagger");
+  circleStaggerBtn.addEventListener("click", () => {
+    stagger = !stagger;
+    circleStaggerBtn.textContent = "錯開加針：" + (stagger ? "開" : "關");
+    circleStaggerBtn.classList.toggle("on", stagger);
+    renderCircle();
+  });
+  circleStaggerBtn.classList.add("on");
+  document.getElementById("circleRounds").addEventListener("input", renderCircle);
+
+  function renderCircle() {
+    const rounds = Math.max(1, Math.min(24, Math.floor(Number(document.getElementById("circleRounds").value) || 1)));
+    const rows = buildInc(circleFactor, rounds, stagger);
+    document.getElementById("circleSummary").textContent =
+      "最闊一圈約 " + (circleFactor * rounds) + " 針。";
+    document.getElementById("circleBody").innerHTML = rows.map((r) =>
+      "<tr><td class='num'>" + r.round + "</td><td class='num'>" + r.stitches + "</td><td>" + r.how + "</td></tr>"
+    ).join("");
+  }
+  renderCircle();
+
+  let sphereFactor = 6;
+  const sphereFactorEl = document.getElementById("sphereFactor");
+  [6, 8].forEach((n) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (n === 6 ? " on" : "");
+    b.textContent = n === 6 ? "+6（標準球）" : "+8（較扁）";
+    b.addEventListener("click", () => {
+      sphereFactor = n;
+      sphereFactorEl.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      renderSphere();
+    });
+    sphereFactorEl.appendChild(b);
+  });
+  document.getElementById("sphereRounds").addEventListener("input", renderSphere);
+
+  function renderSphere() {
+    const inc = Math.max(1, Math.min(24, Math.floor(Number(document.getElementById("sphereRounds").value) || 1)));
+    const maxSt = sphereFactor * inc;
+    const even = inc + 1;
+    const up = buildInc(sphereFactor, inc, true);
+    const rows = [];
+    up.forEach((r) => rows.push({ round: r.round, stitches: r.stitches, how: "加針 · " + r.how }));
+    for (let i = 1; i <= even; i++) {
+      rows.push({ round: inc + i, stitches: maxSt, how: "平織 · 每圈 " + maxSt + " 短針" });
+    }
+    for (let r = inc - 1; r >= 1; r--) {
+      const stitches = sphereFactor * r;
+      const roundNum = inc + even + (inc - r);
+      let how = "";
+      if (r === 1) how = "每針減針 ×" + sphereFactor + "；塞棉後收口";
+      else if (r === 2) how = "(減針) ×" + sphereFactor;
+      else how = "(" + (r - 2) + " 短針, 減針) ×" + sphereFactor;
+      rows.push({ round: roundNum, stitches, how: "減針 · " + how });
+    }
+    document.getElementById("sphereSummary").textContent =
+      "加針至 " + maxSt + " 針 → 平織 " + even + " 圈 → 再減返。";
+    document.getElementById("sphereBody").innerHTML = rows.map((r) =>
+      "<tr><td class='num'>" + r.round + "</td><td class='num'>" + r.stitches + "</td><td>" + r.how + "</td></tr>"
+    ).join("");
+  }
+  renderSphere();
+})();
+</script>
+</body>
+</html>
