@@ -330,18 +330,184 @@
   .celeb h3 { margin: 0 0 6px; color: var(--ok); }
   .celeb p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
-  /* —— Simulator (模擬) —— */
-  .sim-layout { display: grid; gap: 14px; }
+  /* —— Simulator (模擬) Gurumi-style —— */
+  .sim-hero {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .sim-hero-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0 0 10px;
+    line-height: 1.45;
+  }
+  .sim-layout { display: grid; gap: 12px; }
+  .sim-editor {
+    display: grid;
+    gap: 0;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  .sim-editor-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sim-editor-head .sim-title {
+    flex: 1 1 120px;
+    min-width: 100px;
+    border: none;
+    background: transparent;
+    font: 700 1rem/1.2 PingFang HK, Noto Sans TC, sans-serif;
+    color: var(--ink);
+    padding: 4px 0;
+  }
+  .sim-editor-head .sim-title:focus { outline: none; }
+  .sim-swatches {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sim-swatch {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(42,36,28,0.12);
+    padding: 0;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
+  }
+  .sim-swatch.on {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px rgba(42,36,28,0.15);
+  }
+  .sim-total {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sim-editor-body {
+    position: relative;
+    display: grid;
+  }
+  .sim-lines {
+    font: 0.86rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    max-height: 220px;
+    overflow: auto;
+    padding: 8px 0;
+    background: #fff;
+  }
+  .sim-line {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 0;
+    padding: 0 12px 0 0;
+    min-height: 1.55em;
+  }
+  .sim-line.on {
+    background: #d8f3e6;
+  }
+  .sim-ln {
+    color: var(--faint);
+    text-align: right;
+    padding-right: 10px;
+    user-select: none;
+    border-right: 1px solid var(--line);
+  }
+  .sim-line.on .sim-ln {
+    color: #1a7a55;
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 #e23b2f;
+  }
+  .sim-lt {
+    padding-left: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--ink);
+  }
+  .sim-line.on .sim-lt::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+    height: 1.05em;
+    background: #e23b2f;
+    margin-left: 1px;
+    vertical-align: text-bottom;
+    animation: simCaret 1s steps(1) infinite;
+  }
+  @keyframes simCaret {
+    50% { opacity: 0; }
+  }
+  .sim-pattern-raw {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    resize: none;
+    border: none;
+    padding: 8px 12px 8px 48px;
+    font: 0.86rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    z-index: 2;
+    color: transparent;
+    caret-color: #e23b2f;
+    background: transparent;
+  }
+  .sim-pattern-raw:focus {
+    opacity: 1;
+    color: var(--ink);
+    background: #fff;
+  }
+  .sim-pattern-raw:focus ~ .sim-lines { visibility: hidden; }
+  .sim-editor-hint {
+    font-size: 0.75rem;
+    color: var(--faint);
+    padding: 0 14px 8px;
+  }
+  .sim-active-badge {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    z-index: 3;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1a7a55;
+    background: rgba(216,243,230,0.95);
+    border: 1px solid rgba(26,122,85,0.25);
+    border-radius: 999px;
+    padding: 4px 8px;
+    pointer-events: none;
+  }
+  .sim-parse {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    max-height: 88px;
+    overflow: auto;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    padding: 6px 10px;
+  }
+  .sim-parse .ok { color: var(--ok); }
+  .sim-parse .bad { color: #b33a2b; font-weight: 700; }
+  .sim-parse .row { display: flex; gap: 8px; justify-content: space-between; padding: 1px 0; }
   .sim-canvas-wrap {
     position: relative;
     border-radius: 22px;
     border: 1px solid var(--line);
     background:
-      radial-gradient(ellipse at 50% 30%, #ffffff 0%, #f7f1e8 55%, #efe6da 100%);
+      radial-gradient(ellipse at 50% 28%, #ffffff 0%, #eef1f4 55%, #e4e8ec 100%);
     box-shadow: var(--shadow);
     overflow: hidden;
-    aspect-ratio: 1 / 1.05;
-    max-height: 380px;
+    aspect-ratio: 1 / 1.02;
+    max-height: 400px;
     touch-action: none;
     cursor: grab;
   }
@@ -356,67 +522,37 @@
     left: 12px; right: 12px; bottom: 12px;
     display: flex; justify-content: space-between; gap: 8px;
     pointer-events: none;
-    font-size: 0.8rem; font-weight: 700; color: var(--muted);
+    font-size: 0.78rem; font-weight: 700; color: var(--muted);
   }
   .sim-hud span {
-    background: rgba(255,250,244,0.88);
+    background: rgba(255,250,244,0.9);
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 6px 10px;
     backdrop-filter: blur(6px);
   }
-  .sim-textarea {
-    width: 100%;
-    min-height: 160px;
-    font: 0.9rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    padding: 12px 14px;
-    border-radius: 16px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--ink);
-    resize: vertical;
-  }
-  .sim-parse {
-    margin: 8px 0 0;
-    font-size: 0.82rem;
-    color: var(--muted);
-    max-height: 120px;
-    overflow: auto;
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    padding: 8px 10px;
-  }
-  .sim-parse .ok { color: var(--ok); }
-  .sim-parse .bad { color: #b33a2b; font-weight: 700; }
-  .sim-parse .row { display: flex; gap: 8px; justify-content: space-between; padding: 2px 0; }
   .sim-toolbar {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   }
   .sim-toolbar .fat { flex: 1 1 90px; min-height: 48px; font-size: 0.95rem; }
-  .sim-meta {
+  .sim-speed-wrap {
+    flex: 1 1 140px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
   }
-  .sim-meta label input[type="color"] {
-    width: 100%;
-    height: 44px;
-    padding: 4px;
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    cursor: pointer;
-  }
-  .sim-meta label input[type="range"] {
+  .sim-speed-wrap input[type="range"] {
     width: 100%;
     accent-color: var(--accent);
   }
-  .sim-gen-row {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: end;
+  .sim-color-picker-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
-  .sim-gen-row label { flex: 1 1 100px; }
-  .sim-gen-row .chip { flex: 0 0 auto; }
 </style>
 </head>
 <body>
@@ -546,53 +682,51 @@
     </section>
 
     <section class="panel" id="panel-sim">
-      <div class="card sim-layout">
-        <div class="callout"><strong>形狀模擬：</strong>寫好每圈針數，睇住佢一圈圈織出嚟。靈感嚟自 Gurumi 類「寫圖案睇形狀」模擬器；本頁係簡化版形狀預覽。</div>
+      <div class="sim-layout">
+        <div>
+          <p class="sim-hero">寫好織圖，睇住佢一針一針織出嚟</p>
+          <p class="sim-hero-sub">跟 Gurumi 嗰種：上面寫圖案、下面逐針模擬。本頁係自製版，唔係 gurumi.app。</p>
+        </div>
 
         <div class="chip-row" id="simPresets"></div>
 
-        <div class="sim-canvas-wrap" id="simCanvasWrap" title="拖曳可以轉角度">
+        <div class="card sim-editor">
+          <div class="sim-editor-head">
+            <input class="sim-title" id="simTitle" type="text" value="小球" maxlength="40" aria-label="作品名稱">
+            <div class="sim-swatches" id="simSwatches" aria-label="毛線色 A–F"></div>
+            <div class="sim-total" id="simTotal">0 針</div>
+          </div>
+          <p class="sim-editor-hint">撳下面編輯織圖；播放緊會用薄荷綠色標示而家嗰行。</p>
+          <div class="sim-editor-body">
+            <textarea class="sim-pattern-raw" id="simPattern" spellcheck="false" aria-label="織圖" placeholder="Body, with A:&#10;Rnd 1: 6 sc in MR (6)&#10;Rnd 2: inc x6 (12)"></textarea>
+            <div class="sim-lines" id="simLines" aria-hidden="true"></div>
+            <div class="sim-active-badge" id="simActiveBadge" hidden></div>
+          </div>
+          <div class="sim-parse" id="simParse" aria-live="polite"></div>
+        </div>
+
+        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳可以轉角度" style="padding:0">
           <canvas id="simCanvas" width="400" height="420"></canvas>
           <div class="sim-hud">
-            <span id="simHudRound">第 0 / 0 圈</span>
-            <span id="simHudStitch">共 0 針</span>
+            <span id="simHudRound">第 0 圈</span>
+            <span id="simHudStitch">0 / 0 針</span>
           </div>
         </div>
 
         <div class="sim-toolbar">
           <button class="fat ok" id="simPlay" type="button">▶ 播放</button>
           <button class="fat quiet" id="simPause" type="button">⏸ 暫停</button>
-          <button class="fat quiet" id="simStep" type="button">⏭ 下一圈</button>
+          <button class="fat quiet" id="simStep" type="button">⏭ 下一針</button>
           <button class="fat quiet" id="simReplay" type="button">↺ 重播</button>
-        </div>
-
-        <div class="sim-meta">
-          <label>毛線色
-            <input type="color" id="simColor" value="#e8a06a">
-          </label>
-          <label>播放速度
+          <label class="sim-speed-wrap">速度
             <input type="range" id="simSpeed" min="1" max="10" value="5">
           </label>
         </div>
 
-        <label style="display:grid;gap:6px;font-size:0.85rem;color:var(--muted);font-weight:600">織圖（一行一圈）
-          <textarea class="sim-textarea" id="simPattern" spellcheck="false" placeholder="例如：&#10;6&#10;12&#10;18&#10;24&#10;或者：&#10;6 sc&#10;inc x6&#10;(sc, inc) x6"></textarea>
-        </label>
-        <div class="sim-parse" id="simParse" aria-live="polite"></div>
-
-        <div class="sim-gen-row">
-          <label>自訂生成・每圈加
-            <input type="number" id="simGenFactor" min="4" max="12" value="6">
-          </label>
-          <label>圈數
-            <input type="number" id="simGenRounds" min="2" max="24" value="8">
-          </label>
-          <button class="chip" id="simGenFlat" type="button">平面圓公式</button>
-          <button class="chip" id="simGenSphere" type="button">球體公式</button>
-        </div>
+        <input type="color" id="simColorPicker" class="sim-color-picker-hidden" value="#f3e6d4" tabindex="-1" aria-hidden="true">
 
         <p class="note" style="font-size:0.82rem;line-height:1.55;margin:0">
-          支援：純數字、<code>6 sc</code>、<code>inc x6</code>、<code>(sc, inc) x6</code>、<code>(2 sc, inc) x6</code>。針數唔對會標紅提示。拖曳預覽可轉角度。
+          支援：<code>6 sc in MR</code>、<code>inc x6</code>、<code>(sc, inc) x6</code>、<code>(2 sc, dec) x6</code>、<code>sc around</code>、<code>Rnds 5-8:</code>、<code>change to B</code>。針數唔對會提示。
           靈感：<a href="https://www.instagram.com/reel/Dex4g6oiJ-D/" target="_blank" rel="noopener noreferrer">@gurumiapp</a>
           （<a href="https://gurumi.app" target="_blank" rel="noopener noreferrer">gurumi.app</a>）。
         </p>
@@ -1030,506 +1164,8 @@
   }
   renderGeo();
 
-  /* —— Gurumi-inspired shape simulator —— */
-  const simPresets = [
-    {
-      id: "sphere6",
-      label: "球體(+6)",
-      pattern: () => buildSpherePattern(6, 6),
-    },
-    {
-      id: "flat8",
-      label: "平面圓(+8)",
-      pattern: () => buildFlatPattern(8, 8),
-    },
-    {
-      id: "cone4",
-      label: "尖錐(+4)",
-      pattern: () => buildFlatPattern(4, 10),
-    },
-    {
-      id: "bowl5",
-      label: "碗(+5)",
-      pattern: () => {
-        // steep dome then a few even rounds = bowl-ish
-        const lines = buildFlatPattern(5, 6).split("\n");
-        const max = 5 * 6;
-        for (let i = 0; i < 4; i++) lines.push(String(max));
-        return lines.join("\n");
-      },
-    },
-    { id: "custom", label: "自訂", pattern: null },
-  ];
-
-  function buildFlatPattern(factor, rounds) {
-    const lines = [];
-    for (let r = 1; r <= rounds; r++) {
-      if (r === 1) lines.push(String(factor) + " sc");
-      else if (r === 2) lines.push("inc x" + factor);
-      else lines.push("(" + (r - 2) + " sc, inc) x" + factor);
-    }
-    return lines.join("\n");
-  }
-
-  function buildSpherePattern(factor, incRounds) {
-    const lines = [];
-    for (let r = 1; r <= incRounds; r++) {
-      if (r === 1) lines.push(String(factor) + " sc");
-      else if (r === 2) lines.push("inc x" + factor);
-      else lines.push("(" + (r - 2) + " sc, inc) x" + factor);
-    }
-    const max = factor * incRounds;
-    const even = incRounds + 1;
-    for (let i = 0; i < even; i++) lines.push(String(max) + " sc");
-    // decrease: target stitches = factor * r → (r-1 sc, dec) × factor; r=1 → dec × factor
-    for (let r = incRounds - 1; r >= 1; r--) {
-      if (r === 1) lines.push("dec x" + factor);
-      else lines.push("(" + (r - 1) + " sc, dec) x" + factor);
-    }
-    return lines.join("\n");
-  }
-
-  /** Parse one pattern line → expected stitch count (or null). */
-  function parseSimLine(raw) {
-    let s = String(raw || "").trim();
-    if (!s || s.startsWith("#") || s.startsWith("//")) return { skip: true };
-    s = s.replace(/^(?:R|r|圓|圈|第)\s*\d+\s*[:：.\-]?\s*/, "");
-    s = s.replace(/\s+/g, " ").trim();
-
-    let m = s.match(/^(\d+)\s*(?:sc|sts?|針|短針)?$/i);
-    if (m) return { stitches: +m[1], ok: true, kind: "num" };
-
-    m = s.match(/^(?:inc|加針)\s*[x×*]?\s*(\d+)$/i) || s.match(/^(\d+)\s*(?:inc|加針)$/i);
-    if (m) return { stitches: +m[1] * 2, ok: true, kind: "all-inc", incs: +m[1] };
-
-    m = s.match(/^(?:dec|減針)\s*[x×*]?\s*(\d+)$/i) || s.match(/^(\d+)\s*(?:dec|減針)$/i);
-    if (m) return { stitches: +m[1], ok: true, kind: "all-dec", decs: +m[1] };
-
-    m = s.match(/^\(\s*(.*?)\s*\)\s*[x×*]?\s*(\d+)\s*$/i);
-    if (m) {
-      const inner = m[1];
-      const times = +m[2];
-      const parts = inner.split(",").map((p) => p.trim());
-      let scCount = 0;
-      let isInc = null;
-      for (const p of parts) {
-        if (/inc|加針/i.test(p)) isInc = true;
-        else if (/dec|減針/i.test(p)) isInc = false;
-        else if (/sc|短針/i.test(p)) {
-          const nm = p.match(/^(\d+)/);
-          scCount = nm ? +nm[1] : 1;
-        } else if (/^\d+$/.test(p)) scCount = +p;
-      }
-      if (isInc !== null) {
-        const per = isInc ? (scCount + 2) : (scCount + 1);
-        return { stitches: per * times, ok: true, kind: isInc ? "inc-group" : "dec-group", times, scCount };
-      }
-    }
-
-    m = s.match(/^(\d+)\s*(?:sc|短針)\b/i);
-    if (m) return { stitches: +m[1], ok: true, kind: "sc" };
-
-    return { stitches: null, ok: false, kind: "unknown", raw: s };
-  }
-
-  function parseSimPattern(text) {
-    const lines = String(text || "").split(/\r?\n/);
-    const rounds = [];
-    let prev = null;
-    lines.forEach((line, idx) => {
-      const p = parseSimLine(line);
-      if (p.skip) return;
-      if (!p.ok || p.stitches == null || p.stitches < 1) {
-        rounds.push({ line: idx + 1, text: line, stitches: null, warn: "睇唔明呢行" });
-        return;
-      }
-      let warn = "";
-      // gentle math check for all-inc: should be 2x previous
-      if (p.kind === "all-inc" && prev != null && prev * 2 !== p.stitches) {
-        warn = "加針後通常係上圈×2（上圈 " + prev + "）";
-      }
-      if (p.kind === "all-dec" && prev != null && p.stitches !== Math.floor(prev / 2) && p.decs && p.decs * 2 !== prev) {
-        // only soft warn if dec count doesn't match prev
-        if (p.decs && prev != null && p.decs * 2 !== prev) {
-          warn = "減針×" + p.decs + " 通常對上圈 " + (p.decs * 2) + " 針（而家上圈 " + prev + "）";
-        }
-      }
-      rounds.push({ line: idx + 1, text: line, stitches: p.stitches, warn, kind: p.kind });
-      prev = p.stitches;
-    });
-    return rounds;
-  }
-
-  const simPresetEl = document.getElementById("simPresets");
-  const simPatternEl = document.getElementById("simPattern");
-  const simParseEl = document.getElementById("simParse");
-  const simCanvas = document.getElementById("simCanvas");
-  const simCtx = simCanvas.getContext("2d");
-  const simWrap = document.getElementById("simCanvasWrap");
-  const simHudRound = document.getElementById("simHudRound");
-  const simHudStitch = document.getElementById("simHudStitch");
-  const simColorEl = document.getElementById("simColor");
-  const simSpeedEl = document.getElementById("simSpeed");
-
-  let simRounds = [];
-  let simVisible = 0; // how many rounds currently shown (0..n)
-  let simPlaying = false;
-  let simRaf = 0;
-  let simLastTick = 0;
-  let simYaw = 0.35;
-  let simAutoSpin = true;
-  let simDrag = null;
-  let simActivePreset = "sphere6";
-
-  function setPresetChips() {
-    simPresetEl.innerHTML = "";
-    simPresets.forEach((p) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip" + (p.id === simActivePreset ? " on" : "");
-      b.textContent = p.label;
-      b.addEventListener("click", () => {
-        simActivePreset = p.id;
-        setPresetChips();
-        if (p.pattern) {
-          simPatternEl.value = p.pattern();
-          refreshSimFromText(true);
-        }
-      });
-      simPresetEl.appendChild(b);
-    });
-  }
-
-  function refreshSimFromText(resetAnim) {
-    simRounds = parseSimPattern(simPatternEl.value).filter((r) => r.stitches != null || r.warn);
-    // keep only meaningful
-    const valid = simRounds.filter((r) => r.stitches != null);
-    simParseEl.innerHTML = simRounds.length
-      ? simRounds.map((r) => {
-          if (r.stitches == null) {
-            return "<div class='row bad'><span>L" + r.line + " " + escapeHtml(r.text || "") + "</span><span>" + r.warn + "</span></div>";
-          }
-          const cls = r.warn ? "bad" : "ok";
-          return "<div class='row " + cls + "'><span>第" + r.line + "圈 · " + escapeHtml(String(r.text).slice(0, 42)) + "</span><span>" + r.stitches + " 針" + (r.warn ? " · " + r.warn : "") + "</span></div>";
-        }).join("")
-      : "<div class='row'>未有有效圈數</div>";
-    if (resetAnim) {
-      simVisible = 0;
-      simPlaying = false;
-      updateSimButtons();
-    } else {
-      simVisible = Math.min(simVisible, valid.length);
-    }
-    drawSim();
-    updateSimHud();
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  }
-
-  function validRounds() {
-    return simRounds.filter((r) => r.stitches != null && r.stitches > 0);
-  }
-
-  function updateSimHud() {
-    const vr = validRounds();
-    const n = Math.min(simVisible, vr.length);
-    const total = vr.slice(0, n).reduce((a, r) => a + r.stitches, 0);
-    simHudRound.textContent = "第 " + n + " / " + vr.length + " 圈";
-    simHudStitch.textContent = "共 " + total + " 針";
-  }
-
-  function updateSimButtons() {
-    document.getElementById("simPlay").textContent = simPlaying ? "▶ 播放中…" : "▶ 播放";
-  }
-
-  function hexToRgb(hex) {
-    const h = hex.replace("#", "");
-    const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
-    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-  }
-  function shade(hex, f) {
-    const { r, g, b } = hexToRgb(hex);
-    const t = f < 0 ? 0 : 255;
-    const p = Math.abs(f);
-    const rr = Math.round((t - r) * p + r);
-    const gg = Math.round((t - g) * p + g);
-    const bb = Math.round((t - b) * p + b);
-    return "rgb(" + rr + "," + gg + "," + bb + ")";
-  }
-
-  function resizeSimCanvas() {
-    const rect = simWrap.getBoundingClientRect();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(280, Math.floor(rect.width));
-    const h = Math.max(280, Math.floor(rect.height));
-    simCanvas.width = Math.floor(w * dpr);
-    simCanvas.height = Math.floor(h * dpr);
-    simCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawSim();
-  }
-
-  function drawSim() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = simCanvas.width / dpr;
-    const h = simCanvas.height / dpr;
-    simCtx.clearRect(0, 0, w, h);
-
-    // soft ground shadow
-    simCtx.fillStyle = "rgba(42,36,28,0.06)";
-    simCtx.beginPath();
-    simCtx.ellipse(w * 0.5, h * 0.86, w * 0.28, h * 0.035, 0, 0, Math.PI * 2);
-    simCtx.fill();
-
-    const vr = validRounds();
-    const nShow = Math.min(simVisible, vr.length);
-    if (nShow === 0) {
-      simCtx.fillStyle = "rgba(122,111,98,0.7)";
-      simCtx.font = "600 14px PingFang HK, Noto Sans TC, sans-serif";
-      simCtx.textAlign = "center";
-      simCtx.fillText("撳播放，睇佢織出嚟", w / 2, h * 0.48);
-      return;
-    }
-
-    const stitches = vr.slice(0, nShow).map((r) => r.stitches);
-    const maxSt = Math.max.apply(null, stitches);
-    // radius ∝ sqrt(stitches) — circumference feel
-    const radii = stitches.map((s) => Math.sqrt(s / maxSt));
-    const yarn = simColorEl.value || "#e8a06a";
-    const dark = shade(yarn, -0.28);
-    const mid = shade(yarn, -0.08);
-    const light = shade(yarn, 0.22);
-
-    const cx = w * 0.5;
-    const baseY = h * 0.78;
-    const stackH = h * 0.55;
-    const gap = stackH / Math.max(nShow, 1);
-    const maxRx = w * 0.32;
-    const tilt = 0.42; // ellipse squash
-
-    // precompute ring geometry
-    const rings = [];
-    for (let i = 0; i < nShow; i++) {
-      const rx = Math.max(8, maxRx * radii[i]);
-      const ry = rx * tilt;
-      const y = baseY - i * gap;
-      const xOff = Math.sin(simYaw) * rx * 0.12;
-      rings.push({ rx, ry, y, xOff });
-    }
-
-    // side walls between rings (trapezoids) for solid amigurumi body
-    for (let i = 0; i < nShow - 1; i++) {
-      const a = rings[i], b = rings[i + 1];
-      const grd = simCtx.createLinearGradient(cx - Math.max(a.rx, b.rx), a.y, cx + Math.max(a.rx, b.rx), b.y);
-      grd.addColorStop(0, dark);
-      grd.addColorStop(0.5, mid);
-      grd.addColorStop(1, shade(yarn, -0.12));
-      simCtx.beginPath();
-      simCtx.moveTo(cx + a.xOff - a.rx, a.y);
-      simCtx.lineTo(cx + b.xOff - b.rx, b.y);
-      simCtx.lineTo(cx + b.xOff + b.rx, b.y);
-      simCtx.lineTo(cx + a.xOff + a.rx, a.y);
-      simCtx.closePath();
-      simCtx.fillStyle = grd;
-      simCtx.fill();
-    }
-
-    // draw rings bottom → top
-    for (let i = 0; i < nShow; i++) {
-      const { rx, ry, y, xOff } = rings[i];
-
-      // underside shadow ring
-      simCtx.beginPath();
-      simCtx.ellipse(cx + xOff, y + 3, rx * 1.02, ry * 1.05, 0, 0, Math.PI * 2);
-      simCtx.fillStyle = "rgba(42,36,28,0.10)";
-      simCtx.fill();
-
-      // body ring fill
-      const grd = simCtx.createLinearGradient(cx - rx, y, cx + rx, y);
-      grd.addColorStop(0, dark);
-      grd.addColorStop(0.35, mid);
-      grd.addColorStop(0.55, light);
-      grd.addColorStop(1, dark);
-      simCtx.beginPath();
-      simCtx.ellipse(cx + xOff, y, rx, ry, 0, 0, Math.PI * 2);
-      simCtx.fillStyle = grd;
-      simCtx.fill();
-
-      // rim highlight
-      simCtx.beginPath();
-      simCtx.ellipse(cx + xOff, y, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.95);
-      simCtx.strokeStyle = "rgba(255,255,255,0.35)";
-      simCtx.lineWidth = 2;
-      simCtx.stroke();
-
-      // stitch dashes around ellipse
-      const stCount = Math.min(48, Math.max(8, Math.round(stitches[i] / 2)));
-      simCtx.strokeStyle = "rgba(42,36,28,0.18)";
-      simCtx.lineWidth = 1.2;
-      for (let s = 0; s < stCount; s++) {
-        const a = (s / stCount) * Math.PI * 2 + simYaw * 0.4;
-        // only draw front-ish stitches for depth
-        const depth = Math.cos(a - simYaw);
-        if (depth < -0.15) continue;
-        const px = cx + xOff + Math.cos(a) * rx;
-        const py = y + Math.sin(a) * ry;
-        const nx = Math.cos(a) * 3;
-        const ny = Math.sin(a) * 2;
-        simCtx.globalAlpha = 0.25 + 0.55 * ((depth + 1) / 2);
-        simCtx.beginPath();
-        simCtx.moveTo(px - nx, py - ny);
-        simCtx.lineTo(px + nx, py + ny);
-        simCtx.stroke();
-      }
-      simCtx.globalAlpha = 1;
-
-      // newest ring pulse
-      if (i === nShow - 1 && simPlaying) {
-        simCtx.beginPath();
-        simCtx.ellipse(cx + xOff, y, rx + 4, ry + 3, 0, 0, Math.PI * 2);
-        simCtx.strokeStyle = "rgba(196,92,38,0.35)";
-        simCtx.lineWidth = 2;
-        simCtx.stroke();
-      }
-    }
-  }
-
-  function simPanelActive() {
-    const p = document.getElementById("panel-sim");
-    return p && p.classList.contains("active");
-  }
-
-  function simTick(t) {
-    const need = simPanelActive() && (simPlaying || simAutoSpin || simDrag);
-    if (!need && !simPlaying) {
-      simRaf = 0;
-      return;
-    }
-    simRaf = requestAnimationFrame(simTick);
-    if (simAutoSpin && !simDrag) {
-      simYaw += 0.008;
-    }
-    const vr = validRounds();
-    if (simPlaying) {
-      const speed = Number(simSpeedEl.value) || 5; // 1..10
-      const interval = 1100 - speed * 90; // ~1010..100ms
-      if (t - simLastTick >= interval) {
-        simLastTick = t;
-        if (simVisible < vr.length) {
-          simVisible += 1;
-          updateSimHud();
-        } else {
-          simPlaying = false;
-          updateSimButtons();
-        }
-      }
-    }
-    drawSim();
-  }
-
-  function startSimLoop() {
-    if (simRaf) return;
-    simLastTick = performance.now();
-    simRaf = requestAnimationFrame(simTick);
-  }
-
-  document.getElementById("simPlay").addEventListener("click", () => {
-    const vr = validRounds();
-    if (!vr.length) return;
-    if (simVisible >= vr.length) simVisible = 0;
-    simPlaying = true;
-    updateSimButtons();
-    simLastTick = performance.now();
-    startSimLoop();
-  });
-  document.getElementById("simPause").addEventListener("click", () => {
-    simPlaying = false;
-    updateSimButtons();
-  });
-  document.getElementById("simStep").addEventListener("click", () => {
-    const vr = validRounds();
-    if (!vr.length) return;
-    simPlaying = false;
-    updateSimButtons();
-    if (simVisible < vr.length) simVisible += 1;
-    updateSimHud();
-    drawSim();
-  });
-  document.getElementById("simReplay").addEventListener("click", () => {
-    simVisible = 0;
-    simPlaying = true;
-    updateSimButtons();
-    updateSimHud();
-    simLastTick = performance.now();
-    startSimLoop();
-  });
-
-  simPatternEl.addEventListener("input", () => {
-    simActivePreset = "custom";
-    setPresetChips();
-    refreshSimFromText(false);
-  });
-  simColorEl.addEventListener("input", drawSim);
-  simSpeedEl.addEventListener("input", () => {});
-
-  document.getElementById("simGenFlat").addEventListener("click", () => {
-    const f = Math.max(4, Math.min(12, Math.floor(Number(document.getElementById("simGenFactor").value) || 6)));
-    const r = Math.max(2, Math.min(24, Math.floor(Number(document.getElementById("simGenRounds").value) || 8)));
-    simActivePreset = "custom";
-    setPresetChips();
-    simPatternEl.value = buildFlatPattern(f, r);
-    refreshSimFromText(true);
-  });
-  document.getElementById("simGenSphere").addEventListener("click", () => {
-    const f = Math.max(4, Math.min(12, Math.floor(Number(document.getElementById("simGenFactor").value) || 6)));
-    const r = Math.max(2, Math.min(16, Math.floor(Number(document.getElementById("simGenRounds").value) || 6)));
-    simActivePreset = "custom";
-    setPresetChips();
-    simPatternEl.value = buildSpherePattern(f, r);
-    refreshSimFromText(true);
-  });
-
-  // drag to rotate
-  simWrap.addEventListener("pointerdown", (e) => {
-    simDrag = { x: e.clientX, yaw: simYaw };
-    simWrap.setPointerCapture(e.pointerId);
-    simAutoSpin = false;
-  });
-  simWrap.addEventListener("pointermove", (e) => {
-    if (!simDrag) return;
-    const dx = e.clientX - simDrag.x;
-    simYaw = simDrag.yaw + dx * 0.01;
-    drawSim();
-  });
-  function endDrag(e) {
-    if (!simDrag) return;
-    simDrag = null;
-    setTimeout(() => { simAutoSpin = true; }, 1200);
-  }
-  simWrap.addEventListener("pointerup", endDrag);
-  simWrap.addEventListener("pointercancel", endDrag);
-
-  // resize when tab shown
-  const _origTabHandler = null;
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      if (tab.dataset.tab === "sim") {
-        requestAnimationFrame(() => { resizeSimCanvas(); startSimLoop(); });
-      }
-    });
-  });
-  window.addEventListener("resize", () => {
-    if (document.getElementById("panel-sim").classList.contains("active")) resizeSimCanvas();
-  });
-
-  setPresetChips();
-  // default preset content
-  const def = simPresets.find((p) => p.id === "sphere6");
-  simPatternEl.value = def.pattern();
-  refreshSimFromText(true);
-
 })();
 </script>
+<script src="sim.js"></script>
 </body>
 </html>
