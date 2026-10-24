@@ -314,8 +314,8 @@
     position: fixed; inset: 0; pointer-events: none; z-index: 40;
     display: none;
   }
-  #fxLayer.on { display: block; }
-  #fxCanvas { width: 100%; height: 100%; display: block; }
+  #fxLayer.on { display: block; pointer-events: none; }
+  #fxCanvas { width: 100%; height: 100%; display: block; pointer-events: none; }
   .celeb {
     display: none;
     text-align: center;
@@ -345,6 +345,16 @@
     line-height: 1.45;
   }
   .sim-layout { display: grid; gap: 12px; }
+  @media (max-width: 720px) {
+    .sim-layout {
+      display: flex;
+      flex-direction: column;
+    }
+    .sim-layout > .sim-canvas-wrap { order: -3; }
+    .sim-layout > .sim-zoom-slider-wrap { order: -2; }
+    .sim-layout > .sim-toolbar { order: -1; }
+    .sim-canvas-wrap { max-height: min(52vh, 360px); }
+  }
   .sim-editor {
     display: grid;
     gap: 0;
@@ -590,6 +600,97 @@
     color: var(--muted);
     padding: 0 8px;
   }
+  .sim-zoom-dock {
+    position: absolute;
+    left: 10px; right: 10px;
+    bottom: 52px;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 16px;
+    background: rgba(255,250,244,0.95);
+    border: 1px solid var(--line);
+    box-shadow: 0 4px 16px rgba(42,36,28,0.12);
+    pointer-events: auto;
+    touch-action: manipulation;
+    backdrop-filter: blur(8px);
+  }
+  .sim-zoom-dock input[type="range"] {
+    flex: 1 1 auto;
+    height: 40px;
+    margin: 0;
+    accent-color: var(--accent);
+    touch-action: manipulation;
+  }
+  .sim-zoom-dock-btn {
+    flex: 0 0 44px;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .sim-zoom-dock-btn:active { background: #f3ebe0; }
+  .sim-zoom-dock .sim-zoom-pct {
+    flex: 0 0 auto;
+    min-width: 44px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    pointer-events: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+  .sim-zoom-dock-reset {
+    flex: 0 0 auto;
+    height: 44px;
+    padding: 0 10px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .sim-zoom-slider-wrap {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+  }
+  .sim-zoom-slider-wrap label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sim-zoom-slider-wrap input[type="range"] {
+    width: 100%;
+    height: 44px;
+    margin: 0;
+    accent-color: var(--accent);
+    touch-action: manipulation;
+  }
+  .sim-zoom-slider-wrap .sim-zoom-pct-inline {
+    min-width: 52px;
+  }
   .sim-toolbar {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   }
@@ -767,10 +868,17 @@
         <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳轉角度 · 雙指縮放 · 滾輪縮放" style="padding:0">
           <canvas id="simCanvas" width="400" height="420"></canvas>
           <div class="sim-zoom-bar" id="simZoomBar" aria-label="縮放">
-            <button type="button" id="simZoomIn" title="放大">＋</button>
+            <button type="button" id="simZoomIn" title="放大" onclick="window.__simZoom&&window.__simZoom(1.25);return false;">＋</button>
             <div class="sim-zoom-pct" id="simZoomPct" aria-live="polite">100%</div>
-            <button type="button" id="simZoomOut" title="縮小">－</button>
-            <button type="button" id="simZoomReset" class="sim-zoom-reset" title="重設視角">重設<br>視角</button>
+            <button type="button" id="simZoomOut" title="縮小" onclick="window.__simZoom&&window.__simZoom(1/1.25);return false;">－</button>
+            <button type="button" id="simZoomReset" class="sim-zoom-reset" title="重設視角" onclick="window.__simResetView&&window.__simResetView();return false;">重設<br>視角</button>
+          </div>
+          <div class="sim-zoom-dock" id="simZoomDock">
+            <button type="button" class="sim-zoom-dock-btn" id="simZoomOut2" onclick="window.__simZoom&&window.__simZoom(1/1.25);return false;" aria-label="縮小">－</button>
+            <input type="range" id="simZoomSlider" min="50" max="300" step="5" value="100" aria-label="縮放">
+            <button type="button" class="sim-zoom-dock-btn" id="simZoomIn2" onclick="window.__simZoom&&window.__simZoom(1.25);return false;" aria-label="放大">＋</button>
+            <span class="sim-zoom-pct" id="simZoomPct2">100%</span>
+            <button type="button" class="sim-zoom-dock-reset" id="simZoomReset2" onclick="window.__simResetView&&window.__simResetView();return false;">重設</button>
           </div>
           <div class="sim-hud">
             <span id="simHudRound">第 0 圈</span>
@@ -778,11 +886,10 @@
           </div>
         </div>
 
-        <div class="sim-zoom-tools" aria-label="縮放工具">
-          <button class="fat quiet" id="simZoomIn2" type="button">＋ 放大</button>
-          <span class="sim-zoom-pct-inline" id="simZoomPct2">100%</span>
-          <button class="fat quiet" id="simZoomOut2" type="button">－ 縮小</button>
-          <button class="fat quiet" id="simZoomReset2" type="button">重設視角</button>
+        <div class="sim-zoom-slider-wrap">
+          <label for="simZoomSlider2">縮放</label>
+          <input type="range" id="simZoomSlider2" min="50" max="300" step="5" value="100" aria-label="縮放比例">
+          <span class="sim-zoom-pct-inline" id="simZoomPct3">100%</span>
         </div>
 
         <div class="sim-toolbar">
@@ -1238,6 +1345,6 @@
 
 })();
 </script>
-<script src="sim.js"></script>
+<script src="sim.js?v=f8b40e9"></script>
 </body>
 </html>

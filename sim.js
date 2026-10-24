@@ -993,14 +993,25 @@ FO`,
 
   const zoomPctEl = document.getElementById("simZoomPct");
   const zoomPctEl2 = document.getElementById("simZoomPct2");
+  const zoomPctEl3 = document.getElementById("simZoomPct3");
+  const zoomSlider = document.getElementById("simZoomSlider");
+  const zoomSlider2 = document.getElementById("simZoomSlider2");
 
   function clampZoom(z) {
     return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
   }
   function updateZoomLabel() {
-    const label = Math.round(userZoom * 100) + "%";
+    const pct = Math.round(userZoom * 100);
+    const label = pct + "%";
     if (zoomPctEl) zoomPctEl.textContent = label;
     if (zoomPctEl2) zoomPctEl2.textContent = label;
+    if (zoomPctEl3) zoomPctEl3.textContent = label;
+    [zoomSlider, zoomSlider2].forEach((s) => {
+      if (!s) return;
+      if (document.activeElement === s) return;
+      s.value = String(pct);
+      s.setAttribute("aria-valuenow", String(pct));
+    });
   }
   function setZoom(z) {
     userZoom = clampZoom(z);
@@ -1031,54 +1042,72 @@ FO`,
     }, 1400);
   }
 
-  // —— Zoom buttons: overlay + toolbar (outside canvas drag) ——
-  function bindZoomButton(el, action) {
+  // Global backups for inline onclick (works even if addEventListener fails on some WebViews)
+  window.__simZoom = function (factor) {
+    setZoom(userZoom * Number(factor));
+    pauseSpinBriefly();
+    return false;
+  };
+  window.__simResetView = function () {
+    resetView();
+    pauseSpinBriefly();
+    return false;
+  };
+  window.__simSetZoomPct = function (pct) {
+    setZoom(Number(pct) / 100);
+    pauseSpinBriefly();
+    return false;
+  };
+
+  // Buttons: inline onclick + touchend (iOS/WebView often need explicit touch)
+  function wireZoomTap(el, fn) {
     if (!el) return;
-    let swallowClick = false;
-    const run = () => { action(); pauseSpinBriefly(); };
-    el.addEventListener("pointerdown", (e) => { e.stopPropagation(); });
-    // touchend first on phones; mark to swallow the synthetic click that follows
-    el.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      swallowClick = true;
-      setTimeout(() => { swallowClick = false; }, 450);
-      run();
-    }, { passive: false });
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (swallowClick) { swallowClick = false; return; }
-      run();
-    });
+    let last = 0;
+    const run = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      const now = performance.now();
+      if (now - last < 280) return;
+      last = now;
+      fn();
+    };
+    el.addEventListener("touchend", run, { passive: false });
+    // click for desktop / accessibility; skipped after touchend via debounce
+    el.addEventListener("click", run);
   }
-  bindZoomButton(document.getElementById("simZoomIn"), () => setZoom(userZoom * 1.25));
-  bindZoomButton(document.getElementById("simZoomOut"), () => setZoom(userZoom / 1.25));
-  bindZoomButton(document.getElementById("simZoomReset"), () => resetView());
-  bindZoomButton(document.getElementById("simZoomIn2"), () => setZoom(userZoom * 1.25));
-  bindZoomButton(document.getElementById("simZoomOut2"), () => setZoom(userZoom / 1.25));
-  bindZoomButton(document.getElementById("simZoomReset2"), () => resetView());
+  wireZoomTap(document.getElementById("simZoomIn"), () => window.__simZoom(1.25));
+  wireZoomTap(document.getElementById("simZoomOut"), () => window.__simZoom(1 / 1.25));
+  wireZoomTap(document.getElementById("simZoomReset"), () => window.__simResetView());
+  wireZoomTap(document.getElementById("simZoomIn2"), () => window.__simZoom(1.25));
+  wireZoomTap(document.getElementById("simZoomOut2"), () => window.__simZoom(1 / 1.25));
+  wireZoomTap(document.getElementById("simZoomReset2"), () => window.__simResetView());
 
-  const zoomBar = document.getElementById("simZoomBar");
-  if (zoomBar) {
-    ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend"].forEach((ev) => {
-      zoomBar.addEventListener(ev, (e) => e.stopPropagation(), { passive: false });
-    });
+  // —— Impossible-to-miss range sliders (dock + below canvas) ——
+  function wireSlider(s) {
+    if (!s) return;
+    const fromSlider = () => {
+      setZoom(Number(s.value) / 100);
+      pauseSpinBriefly();
+    };
+    s.addEventListener("input", fromSlider);
+    s.addEventListener("change", fromSlider);
   }
+  wireSlider(zoomSlider);
+  wireSlider(zoomSlider2);
 
-  // —— Rotate / pinch on CANVAS only (never steals toolbar/overlay buttons) ——
+  // —— Rotate / pinch on CANVAS only ——
   let lastTap = 0;
   function onCanvasPointerDown(e) {
     if (e.target !== canvas) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     autoSpin = false;
     if (pointers.size >= 2) {
-      // Multi-touch: no pointer capture (lets both fingers + TouchEvent pinch work)
       const pts = [...pointers.values()];
       pinchStart = { dist: pointerDist(pts[0], pts[1]), zoom: userZoom };
       drag = null;
     } else if (pointers.size === 1) {
-      // Single-finger rotate — capture so drag continues off-canvas (desktop)
       if (e.pointerType === "mouse") {
         try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       }
@@ -1131,7 +1160,7 @@ FO`,
   canvas.addEventListener("pointerup", onCanvasPointerUp);
   canvas.addEventListener("pointercancel", onCanvasPointerUp);
 
-  // TouchEvent pinch fallback (iOS Safari often better with touches than multi PointerEvent)
+  // TouchEvent pinch fallback
   let touchPinch = null;
   canvas.addEventListener("touchstart", (e) => {
     if (e.touches.length === 2) {
