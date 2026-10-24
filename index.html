@@ -531,6 +531,35 @@
     padding: 6px 10px;
     backdrop-filter: blur(6px);
   }
+  .sim-zoom-bar {
+    position: absolute;
+    top: 10px; right: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+    z-index: 2;
+  }
+  .sim-zoom-bar button {
+    width: 36px; height: 36px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255,250,244,0.92);
+    box-shadow: 0 2px 8px rgba(42,36,28,0.08);
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    line-height: 1;
+    padding: 0;
+  }
+  .sim-zoom-bar button:active { transform: scale(0.96); }
+  .sim-zoom-bar .sim-zoom-reset {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    padding: 4px 2px;
+    height: auto;
+    min-height: 36px;
+  }
   .sim-toolbar {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   }
@@ -705,8 +734,13 @@
           <div class="sim-parse" id="simParse" aria-live="polite"></div>
         </div>
 
-        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳可以轉角度" style="padding:0">
+        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳轉角度 · 滾輪／雙指縮放" style="padding:0">
           <canvas id="simCanvas" width="400" height="420"></canvas>
+          <div class="sim-zoom-bar" aria-label="縮放">
+            <button type="button" id="simZoomIn" title="放大">＋</button>
+            <button type="button" id="simZoomOut" title="縮小">－</button>
+            <button type="button" id="simZoomReset" class="sim-zoom-reset" title="重設視角">重設<br>視角</button>
+          </div>
           <div class="sim-hud">
             <span id="simHudRound">第 0 圈</span>
             <span id="simHudStitch">0 / 0 針</span>

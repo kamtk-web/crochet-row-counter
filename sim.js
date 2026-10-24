@@ -396,9 +396,9 @@ FO`,
   }
 
   /* ——— Geometry ——— */
-  // Denser packing so neighbouring Vs abut / lock (緊扣), not float as separate dots
-  const STITCH_ARC = 0.58; // arc length per stitch → radius (tighter ring for 緊扣)
-  const STITCH_H = 0.58;   // vertical pitch ≈ stitch height so legs reach parent top
+  // Tight packing → solid amigurumi fabric (not a sparse wire cage)
+  const STITCH_ARC = 0.34; // arc length per stitch → radius
+  const STITCH_H = 0.26;   // vertical pitch — rows stack into fabric
 
   function layoutStitches(stitches) {
     // Continuous spiral amigurumi: radius from round size, height from round index within piece
@@ -425,7 +425,7 @@ FO`,
       let j = i;
       while (j < stitches.length && stitches[j].pieceIndex === pieceIndex && stitches[j].round === round) j++;
       const n = j - i;
-      const radius = Math.max(0.42, (n * STITCH_ARC) / (Math.PI * 2));
+      const radius = Math.max(0.28, (n * STITCH_ARC) / (Math.PI * 2));
       const roundStart = out.length;
       for (let k = 0; k < n; k++) {
         const st = stitches[i + k];
@@ -501,8 +501,13 @@ FO`,
   let lastTick = 0;
   let yaw = 0.55;
   let pitch = 0.55;
+  let userZoom = 1; // 0.5×–3×, separate from fit-to-view
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 3;
   let autoSpin = true;
   let drag = null;
+  let pointers = new Map(); // multi-touch pinch
+  let pinchStart = null;
   let activePreset = "sphere";
   let activeColorKey = "A";
 
@@ -694,12 +699,13 @@ FO`,
     }
 
     const pts = laid.slice(0, nShow);
-    // scale to fit
+    // scale to fit × user zoom
     let maxR = 0.1;
     pts.forEach((p) => {
-      maxR = Math.max(maxR, Math.hypot(p.x, p.z), Math.abs(p.y) * 0.6);
+      // Use full |y| so tall spheres fit (0.6 under-fit → overflow / fake sparse look)
+      maxR = Math.max(maxR, Math.hypot(p.x, p.z), Math.abs(p.y));
     });
-    const scale = Math.min(w, h) * 0.38 / maxR;
+    const scale = (Math.min(w, h) * 0.40 / maxR) * userZoom;
 
     const projected = pts.map((p, idx) => {
       const pr = project(p.x, p.y, p.z);
@@ -756,116 +762,126 @@ FO`,
 
   function drawYarnStitch(p, scale, isActive, parent, left) {
     const depthNorm = Math.max(0, Math.min(1, (p.depth + 8) / 16));
-    // Footprint ≈ STITCH_ARC so neighbouring tops abut into continuous fabric
-    const s = Math.max(3.6, scale * 0.58) * (0.8 + 0.3 * depthNorm);
+    // Footprint sized to overlap neighbours (closes white gaps)
+    const s = Math.max(4.5, scale * STITCH_ARC * 1.55) * (0.85 + 0.25 * depthNorm);
     const col = p.color;
-    const dark = shade(col, -0.3);
-    const mid = shade(col, -0.1);
-    const light = shade(col, 0.22);
+    const dark = shade(col, -0.28);
+    const mid = shade(col, -0.08);
+    const light = shade(col, 0.18);
+    const fill = shade(col, 0.06);
 
-    // Where this stitch locks into the previous round's top loops
     let ax = p.sx;
-    let ay = p.sy + s * 1.05;
+    let ay = p.sy + s * 0.95;
     if (parent) {
-      ax = parent.sx * 0.45 + p.sx * 0.55;
-      ay = parent.sy - s * 0.18; // sit inside parent's top bar
+      ax = parent.sx * 0.4 + p.sx * 0.6;
+      ay = parent.sy - s * 0.08; // lock into parent top
     }
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    const topY = p.sy - s * 0.22;
-    const halfW = s * 0.62; // wide → abut left/right neighbours
+    const topY = p.sy - s * 0.18;
+    const halfW = s * 0.66;
     const lx = p.sx - halfW;
     const rx = p.sx + halfW;
 
-    // Soft underside
+    // Soft shadow
     ctx.beginPath();
-    ctx.ellipse(p.sx, (ay + p.sy) * 0.5, s * 0.48, s * 0.2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(42,36,28," + (0.05 + 0.07 * (1 - depthNorm)) + ")";
+    ctx.ellipse(p.sx, (ay + p.sy) * 0.55, s * 0.5, s * 0.22, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(42,36,28," + (0.05 + 0.06 * (1 - depthNorm)) + ")";
     ctx.fill();
 
-    // --- Posts (V legs) pulling through parent ---
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = Math.max(2.2, s * 0.44);
+    // Filled V body — kills cage-like white holes inside each stitch
     ctx.beginPath();
-    ctx.moveTo(lx + s * 0.06, topY);
-    ctx.quadraticCurveTo(p.sx - s * 0.12, p.sy + s * 0.2, ax - s * 0.04, ay);
+    ctx.moveTo(lx + s * 0.04, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.08, p.sy + s * 0.15, ax, ay);
+    ctx.quadraticCurveTo(p.sx + s * 0.08, p.sy + s * 0.15, rx - s * 0.04, topY);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.28, lx + s * 0.04, topY);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.globalAlpha = 0.82 + 0.12 * depthNorm;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Thick yarn posts
+    const lw = Math.max(3.2, s * 0.62);
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(lx + s * 0.05, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.1, p.sy + s * 0.18, ax - s * 0.02, ay);
     ctx.stroke();
 
     ctx.strokeStyle = light;
-    ctx.lineWidth = Math.max(2.2, s * 0.44);
+    ctx.lineWidth = lw;
     ctx.beginPath();
-    ctx.moveTo(rx - s * 0.06, topY);
-    ctx.quadraticCurveTo(p.sx + s * 0.12, p.sy + s * 0.2, ax + s * 0.04, ay);
+    ctx.moveTo(rx - s * 0.05, topY);
+    ctx.quadraticCurveTo(p.sx + s * 0.1, p.sy + s * 0.18, ax + s * 0.02, ay);
     ctx.stroke();
 
-    // Cross at lock point (yarn going through parent's loops)
+    // Lock bar through parent
     ctx.strokeStyle = mid;
-    ctx.lineWidth = Math.max(1.7, s * 0.32);
+    ctx.lineWidth = Math.max(2.0, s * 0.38);
     ctx.beginPath();
-    ctx.moveTo(ax - s * 0.28, ay + s * 0.02);
-    ctx.quadraticCurveTo(ax, ay + s * 0.14, ax + s * 0.28, ay + s * 0.02);
+    ctx.moveTo(ax - s * 0.3, ay + s * 0.02);
+    ctx.quadraticCurveTo(ax, ay + s * 0.12, ax + s * 0.3, ay + s * 0.02);
     ctx.stroke();
 
-    // Redraw a slice of parent's top bar OVER the legs → true 緊扣 look
     if (parent) {
-      const ps = Math.max(3.6, scale * 0.58) * (0.8 + 0.3 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
-      const pty = parent.sy - ps * 0.22;
-      const phw = ps * 0.62;
+      const ps = Math.max(4.5, scale * STITCH_ARC * 1.55) * (0.85 + 0.25 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
+      const pty = parent.sy - ps * 0.18;
+      const phw = ps * 0.66;
       ctx.strokeStyle = parent.color;
-      ctx.lineWidth = Math.max(1.8, ps * 0.36);
-      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = Math.max(2.2, ps * 0.42);
+      ctx.globalAlpha = 0.95;
       ctx.beginPath();
-      ctx.moveTo(parent.sx - phw * 0.55, pty);
-      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.32, parent.sx + phw * 0.55, pty);
+      ctx.moveTo(parent.sx - phw * 0.7, pty);
+      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.3, parent.sx + phw * 0.7, pty);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    // --- This stitch's top loops (front + back) ---
-    // Back loop
-    ctx.strokeStyle = shade(col, -0.14);
-    ctx.lineWidth = Math.max(1.6, s * 0.3);
+    // Twin top loops (front/back)
+    ctx.strokeStyle = shade(col, -0.12);
+    ctx.lineWidth = Math.max(2.0, s * 0.36);
     ctx.beginPath();
-    ctx.ellipse(p.sx - s * 0.18, topY - s * 0.02, s * 0.28, s * 0.16, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(p.sx - s * 0.16, topY, s * 0.26, s * 0.15, -0.12, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(p.sx + s * 0.18, topY - s * 0.02, s * 0.28, s * 0.16, 0.15, 0, Math.PI * 2);
+    ctx.ellipse(p.sx + s * 0.16, topY, s * 0.26, s * 0.15, 0.12, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Front chain bar linking the two loops
     ctx.strokeStyle = col;
-    ctx.lineWidth = Math.max(2.0, s * 0.38);
+    ctx.lineWidth = Math.max(2.4, s * 0.45);
     ctx.beginPath();
     ctx.moveTo(lx, topY);
-    ctx.quadraticCurveTo(p.sx, topY - s * 0.36, rx, topY);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.32, rx, topY);
     ctx.stroke();
 
-    // Shared yarn with left neighbour → continuous ring, not dotted Vs
+    // Neighbour bridge — continuous ridge
     if (left) {
-      const lTop = left.sy - s * 0.22;
+      const lTop = left.sy - s * 0.18;
       const midX = (left.sx + p.sx) / 2;
-      const midY = (lTop + topY) / 2 - s * 0.06;
+      const midY = (lTop + topY) / 2 - s * 0.05;
       ctx.strokeStyle = mid;
-      ctx.lineWidth = Math.max(1.7, s * 0.32);
+      ctx.lineWidth = Math.max(2.2, s * 0.4);
       ctx.beginPath();
-      ctx.moveTo(left.sx + halfW * 0.7, lTop);
-      ctx.quadraticCurveTo(midX, midY - s * 0.1, lx, topY);
+      ctx.moveTo(left.sx + halfW * 0.75, lTop);
+      ctx.quadraticCurveTo(midX, midY - s * 0.08, lx, topY);
       ctx.stroke();
     }
 
     if (p.kind === "inc") {
-      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy - s * 0.02, s * 0.1, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, s * 0.09, 0, Math.PI * 2);
       ctx.fill();
     }
     if (isActive) {
-      ctx.strokeStyle = "rgba(226,59,47,0.45)";
+      ctx.strokeStyle = "rgba(226,59,47,0.4)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, s * 0.8, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, s * 0.72, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
@@ -975,24 +991,89 @@ FO`,
 
   titleEl.addEventListener("input", () => {});
 
+  function clampZoom(z) {
+    return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+  }
+  function setZoom(z) {
+    userZoom = clampZoom(z);
+    draw();
+  }
+  function resetView() {
+    userZoom = 1;
+    yaw = 0.55;
+    pitch = 0.55;
+    draw();
+  }
+  function pointerDist(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  let lastTap = 0;
   wrap.addEventListener("pointerdown", (e) => {
-    drag = { x: e.clientX, y: e.clientY, yaw, pitch };
+    if (e.target.closest && e.target.closest(".sim-zoom-bar")) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     wrap.setPointerCapture(e.pointerId);
     autoSpin = false;
+    if (pointers.size === 2) {
+      const pts = [...pointers.values()];
+      pinchStart = { dist: pointerDist(pts[0], pts[1]), zoom: userZoom };
+      drag = null;
+    } else if (pointers.size === 1) {
+      const now = performance.now();
+      if (now - lastTap < 280) {
+        resetView();
+        lastTap = 0;
+      } else {
+        lastTap = now;
+      }
+      drag = { x: e.clientX, y: e.clientY, yaw, pitch };
+    }
   });
   wrap.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2 && pinchStart) {
+      const pts = [...pointers.values()];
+      const d = pointerDist(pts[0], pts[1]);
+      if (pinchStart.dist > 0) {
+        setZoom(pinchStart.zoom * (d / pinchStart.dist));
+      }
+      return;
+    }
     if (!drag) return;
     yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
     pitch = Math.max(0.15, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.008));
     draw();
   });
-  function endDrag() {
-    if (!drag) return;
-    drag = null;
-    setTimeout(() => { autoSpin = true; startLoop(); }, 1000);
+  function endDrag(e) {
+    if (e && e.pointerId != null) pointers.delete(e.pointerId);
+    else pointers.clear();
+    if (pointers.size < 2) pinchStart = null;
+    if (pointers.size === 1) {
+      const p = [...pointers.values()][0];
+      drag = { x: p.x, y: p.y, yaw, pitch };
+    } else {
+      drag = null;
+      setTimeout(() => { if (!drag && pointers.size === 0) { autoSpin = true; startLoop(); } }, 1000);
+    }
   }
   wrap.addEventListener("pointerup", endDrag);
   wrap.addEventListener("pointercancel", endDrag);
+
+  wrap.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(userZoom * factor);
+    autoSpin = false;
+    setTimeout(() => { autoSpin = true; startLoop(); }, 1200);
+  }, { passive: false });
+
+  const zin = document.getElementById("simZoomIn");
+  const zout = document.getElementById("simZoomOut");
+  const zreset = document.getElementById("simZoomReset");
+  if (zin) zin.addEventListener("click", (e) => { e.stopPropagation(); setZoom(userZoom * 1.2); });
+  if (zout) zout.addEventListener("click", (e) => { e.stopPropagation(); setZoom(userZoom / 1.2); });
+  if (zreset) zreset.addEventListener("click", (e) => { e.stopPropagation(); resetView(); });
 
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
