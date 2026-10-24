@@ -3,15 +3,75 @@
   "use strict";
 
   const DEFAULT_COLORS = {
-    A: "#f3e6d4",
-    B: "#5c4030",
-    C: "#e05a4a",
-    D: "#f0a03a",
-    E: "#f5d76e",
+    A: "#f5f0e6",
+    B: "#c4a574",
+    C: "#5c4030",
+    D: "#e05a4a",
+    E: "#f0a03a",
     F: "#f2a0b8",
   };
 
+  const YARN_PALETTE = [
+    { hex: "#f5f0e6", name: "乳白" },
+    { hex: "#ffffff", name: "白" },
+    { hex: "#e8d5b5", name: "奶油" },
+    { hex: "#c4a574", name: "淺啡" },
+    { hex: "#8b5a2b", name: "啡" },
+    { hex: "#5c4030", name: "深啡" },
+    { hex: "#f2a0b8", name: "粉紅" },
+    { hex: "#e05a4a", name: "紅" },
+    { hex: "#e07a3a", name: "珊瑚" },
+    { hex: "#f0a03a", name: "橙" },
+    { hex: "#f5d76e", name: "黃" },
+    { hex: "#6ecf97", name: "綠" },
+    { hex: "#6ba3d6", name: "藍" },
+    { hex: "#9a9a9a", name: "灰" },
+    { hex: "#2a241c", name: "黑" },
+  ];
+
+  const SIM_STORE_KEY = "crochet-sim-v1";
+
   const PRESETS = [
+    {
+      id: "cookie-cat",
+      label: "織織・餅乾夾心貓",
+      title: "餅乾夾心貓",
+      colors: { A: "#f5f0e6", B: "#c4a574", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
+      pattern:
+`Head, with A:
+Rnd 1: 8 sc in MR (8)
+Rnd 2: inc x8 (16)
+Rnd 3: (sc, inc) x6, inc x4 (26)
+Rnd 4: inc x14, 12 sc (40)
+Rnds 5-9: sc around (40)
+Rnd 10: dec x14, 12 sc (26)
+Rnd 11: sc around (26)
+Rnd 12: dec x10, 6 sc (16)
+Rnd 13: dec x8 (8)
+FO
+
+Wrapper, with B:
+Rnd 1: 8 sc in MR (8)
+Rnd 2: inc x8 (16)
+Rnd 3: (sc, inc) x8 (24)
+Rnd 4: (2 sc, inc) x8 (32)
+Rnd 5: (3 sc, inc) x8 (40)
+FO`,
+    },
+    {
+      id: "coffee-cup",
+      label: "織織・咖啡杯",
+      title: "咖啡杯",
+      colors: { A: "#c4a574", B: "#f5f0e6", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
+      pattern:
+`Cup, with A:
+Rnd 1: 6 sc in MR (6)
+Rnd 2: inc x6 (12)
+Rnd 3: (sc, inc) x6 (18)
+Rnd 4: sc around (18)
+Rnds 5-10: sc around (18)
+FO`,
+    },
     {
       id: "sphere",
       label: "小球／球體",
@@ -127,8 +187,19 @@ FO`,
           pushStitch("sc", lineIndex, round, made); made++;
           continue;
         }
-        if (/^(?:dec|減針)$/i.test(t)) {
+        if (/^(?:dec|減針|sc3tog)$/i.test(t)) {
           pushStitch("dec", lineIndex, round, made); made++;
+          continue;
+        }
+
+        // N sc3tog
+        m = t.match(/^(\d+)\s*sc3tog$/i) || t.match(/^sc3tog\s*[x×*]?\s*(\d+)$/i);
+        if (m) {
+          const n = +m[1];
+          for (let i = 0; i < n; i++) {
+            pushStitch("dec", lineIndex, round, made);
+            made++;
+          }
           continue;
         }
 
@@ -168,8 +239,13 @@ FO`,
               if (/^(?:inc|加針)$/i.test(p)) {
                 pushStitch("inc", lineIndex, round, made); made++;
                 pushStitch("sc", lineIndex, round, made); made++;
-              } else if (/^(?:dec|減針)$/i.test(p)) {
+              } else if (/^(?:dec|減針|sc3tog)$/i.test(p)) {
                 pushStitch("dec", lineIndex, round, made); made++;
+              } else if ((pm = p.match(/^(\d+)\s*sc3tog$/i))) {
+                const n = +pm[1];
+                for (let j = 0; j < n; j++) {
+                  pushStitch("dec", lineIndex, round, made); made++;
+                }
               } else if ((pm = p.match(/^(\d+)\s*(?:sc|短針)?$/i)) || (pm = p.match(/^(?:sc|短針)$/i))) {
                 const n = pm && pm[1] ? +pm[1] : 1;
                 for (let j = 0; j < n; j++) {
@@ -244,6 +320,8 @@ FO`,
 
     function parseRoundBody(body, lineIndex, round) {
       let s = body.trim();
+      // ignore BLO: / FLO: prefix (back/front loop only)
+      s = s.replace(/^(?:BLO|FLO)\s*:\s*/i, "");
       // strip trailing (N) expected count
       let expected = null;
       const em = s.match(/\((\d+)\)\s*$/);
@@ -528,35 +606,86 @@ FO`,
     return "rgb(" + [r, g, b].map((c) => Math.round((t - c) * p + c)).join(",") + ")";
   }
 
+  function persistSim() {
+    try {
+      localStorage.setItem(SIM_STORE_KEY, JSON.stringify({
+        colors: colors,
+        activeColorKey: activeColorKey,
+        activePreset: activePreset,
+        title: titleEl ? titleEl.value : "",
+        pattern: textareaEl ? textareaEl.value : patternText,
+      }));
+    } catch (e) {}
+  }
+
+  function loadPersistedSim() {
+    try {
+      return JSON.parse(localStorage.getItem(SIM_STORE_KEY) || "null");
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function syncColorPicker() {
+    if (colorPicker) colorPicker.value = colors[activeColorKey] || DEFAULT_COLORS.A;
+  }
+
+  function applyYarnColor(hex) {
+    if (!hex) return;
+    colors[activeColorKey] = hex;
+    syncColorPicker();
+    renderSwatches();
+    renderYarnPalette();
+    reparse(false);
+    persistSim();
+  }
+
   function renderSwatches() {
+    if (!swatchesEl) return;
     swatchesEl.innerHTML = "";
     "ABCDEF".split("").forEach((k) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "sim-swatch" + (k === activeColorKey ? " on" : "");
-      b.title = "色 " + k;
+      b.title = "揀色號 " + k + "（而家 " + (colors[k] || "") + "）";
+      b.setAttribute("aria-label", "色 " + k);
       b.style.background = colors[k];
       b.dataset.key = k;
       b.addEventListener("click", () => {
         activeColorKey = k;
-        const inp = document.getElementById("simColorPicker");
-        inp.value = colors[k];
-        const rect = b.getBoundingClientRect();
-        inp.style.cssText = "position:fixed;left:" + rect.left + "px;top:" + (rect.bottom + 4) + "px;width:32px;height:32px;opacity:0.02;z-index:99;border:0;padding:0;";
-        inp.focus();
-        try { inp.click(); } catch (e) {}
+        syncColorPicker();
         renderSwatches();
+        renderYarnPalette();
+        persistSim();
       });
       swatchesEl.appendChild(b);
     });
   }
 
+  function renderYarnPalette() {
+    const el = document.getElementById("simYarnPalette");
+    if (!el) return;
+    el.innerHTML = "";
+    const activeHex = String(colors[activeColorKey] || "").toLowerCase();
+    YARN_PALETTE.forEach((y) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      const hex = y.hex.toLowerCase();
+      b.className = "sim-yarn-chip" + (hex === activeHex ? " on" : "");
+      b.title = y.name + " " + y.hex;
+      b.setAttribute("aria-label", y.name);
+      b.style.background = y.hex;
+      b.addEventListener("click", () => applyYarnColor(y.hex));
+      el.appendChild(b);
+    });
+  }
+
   const colorPicker = document.getElementById("simColorPicker");
-  colorPicker.addEventListener("input", () => {
-    colors[activeColorKey] = colorPicker.value;
-    renderSwatches();
-    reparse(false);
-  });
+  if (colorPicker) {
+    colorPicker.addEventListener("input", () => {
+      applyYarnColor(colorPicker.value);
+    });
+  }
 
   function renderPresets() {
     presetsEl.innerHTML = "";
@@ -580,7 +709,10 @@ FO`,
     patternText = p.pattern;
     renderPresets();
     renderSwatches();
+    renderYarnPalette();
+    syncColorPicker();
     reparse(true);
+    persistSim();
   }
 
   function reparse(reset) {
@@ -684,14 +816,14 @@ FO`,
     ctx.clearRect(0, 0, w, h);
 
     // ground shadow
-    ctx.fillStyle = "rgba(42,36,28,0.07)";
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath();
     ctx.ellipse(w * 0.5, h * 0.88, w * 0.26, h * 0.03, 0, 0, Math.PI * 2);
     ctx.fill();
 
     const nShow = Math.min(cursor, laid.length);
     if (nShow === 0) {
-      ctx.fillStyle = "rgba(122,111,98,0.75)";
+      ctx.fillStyle = "rgba(168,152,136,0.85)";
       ctx.font = "600 14px PingFang HK, Noto Sans TC, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("撳 ▶ 播放，睇一針一針織出嚟", w / 2, h * 0.48);
@@ -980,16 +1112,18 @@ FO`,
     renderPresets();
     reparse(false);
     syncEditorFromTextarea();
+    persistSim();
   });
   textareaEl.addEventListener("blur", () => {
     // show highlighted line view again
     renderLines();
+    persistSim();
   });
   textareaEl.addEventListener("focus", () => {
     // raw editor visible via CSS
   });
 
-  titleEl.addEventListener("input", () => {});
+  titleEl.addEventListener("input", () => { persistSim(); });
 
   const zoomPctEl = document.getElementById("simZoomPct");
   const zoomPctEl2 = document.getElementById("simZoomPct2");
@@ -1217,6 +1351,20 @@ FO`,
 
   // init
   renderPresets();
-  loadPreset("sphere");
+  const saved = loadPersistedSim();
+  const startId = (saved && PRESETS.some((p) => p.id === saved.activePreset))
+    ? saved.activePreset
+    : "cookie-cat";
+  loadPreset(startId);
+  if (saved && saved.colors) {
+    colors = { ...DEFAULT_COLORS, ...saved.colors };
+    if (saved.activeColorKey && colors[saved.activeColorKey]) {
+      activeColorKey = saved.activeColorKey;
+    }
+    renderSwatches();
+    renderYarnPalette();
+    syncColorPicker();
+    reparse(false);
+  }
   resize();
 })();
