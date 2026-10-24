@@ -194,6 +194,8 @@
   .fat.ok { background: var(--ok); color: #fff; }
   .fat.hidden { display: none; }
   .note { margin-top: 12px; color: var(--muted); font-size: 0.88rem; }
+  .note a, .callout a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .note a:active, .callout a:active { opacity: 0.75; }
   .controls { display: grid; gap: 10px; margin: 12px 0; }
   label {
     display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); font-weight: 600;
@@ -252,7 +254,7 @@
       <button class="tab active" data-tab="counter" type="button">計行</button>
       <button class="tab" data-tab="circle" type="button">平面圓</button>
       <button class="tab" data-tab="sphere" type="button">球體</button>
-      <button class="tab" data-tab="effects" type="button">加針效果</button>
+      <button class="tab" data-tab="effects" type="button">幾何</button>
     </div>
 
     <section class="panel active" id="panel-counter">
@@ -328,20 +330,25 @@
 
     <section class="panel" id="panel-effects">
       <div class="card">
-        <p class="note" style="margin-top:0">每圈加幾多針，形狀點變：</p>
+        <div class="callout"><strong>鈎針幾何：</strong>每圈加幾多針，形狀就唔同。公式：第 n 圈針數 = 加針數 × n。</div>
+        <div class="controls">
+          <div class="chip-row" id="geoFactor"></div>
+          <label>顯示幾多圈
+            <input type="number" id="geoRounds" min="1" max="24" value="7">
+          </label>
+        </div>
+        <p class="callout" id="geoShape" style="margin-top:0"><strong>形狀：</strong>—</p>
+        <p class="note" id="geoSummary"></p>
         <div class="scroll">
           <table>
-            <thead><tr><th>每圈加針</th><th>用途</th><th>效果</th></tr></thead>
-            <tbody>
-              <tr><td class="num">+3</td><td>尖錐</td><td>好尖／圓錐</td></tr>
-              <tr><td class="num">+4</td><td>微圓錐</td><td>略尖</td></tr>
-              <tr><td class="num">+5</td><td>碗／穹頂</td><td>向上收成碗</td></tr>
-              <tr><td class="num">+6</td><td>球體</td><td>公仔頭最常用</td></tr>
-              <tr><td class="num">+7</td><td>近平面</td><td>接近平圓</td></tr>
-              <tr><td class="num">+8</td><td>平面圓</td><td>杯墊；最平</td></tr>
-            </tbody>
+            <thead><tr><th>圈</th><th>針數</th><th>做法提示</th></tr></thead>
+            <tbody id="geoBody"></tbody>
           </table>
         </div>
+        <p class="note" style="margin-top:14px;font-size:0.82rem;line-height:1.55">
+          靈感來源：<a href="https://www.instagram.com/reel/DdOU8Vvu-Ld/" target="_blank" rel="noopener noreferrer">@betibettin · The Geometry of Crochet</a>
+          （<a href="https://youtu.be/p3O5VvwwcrI" target="_blank" rel="noopener noreferrer">YouTube</a>）。數字按每圈固定加針推算，方便對照織圖。
+        </p>
       </div>
     </section>
   </div>
@@ -674,6 +681,54 @@
     ).join("");
   }
   renderSphere();
+
+  /* —— Geometry of Crochet (+4…+12) —— */
+  const GEO = {
+    4:  "尖錐",
+    5:  "好陡嘅穹頂",
+    6:  "圓穹頂／球頭常用",
+    7:  "接近平面，微彎",
+    8:  "平面圓（杯墊）",
+    9:  "邊緣開始起波浪",
+    10: "明顯荷葉邊",
+    11: "好皺，開始摺埋",
+    12: "極皺（像 scrunchie）",
+  };
+  let geoFactor = 6;
+  const geoFactorEl = document.getElementById("geoFactor");
+  Object.keys(GEO).map(Number).forEach((n) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (n === 6 ? " on" : "");
+    b.textContent = "+" + n;
+    b.addEventListener("click", () => {
+      geoFactor = n;
+      geoFactorEl.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      renderGeo();
+    });
+    geoFactorEl.appendChild(b);
+  });
+  document.getElementById("geoRounds").addEventListener("input", renderGeo);
+  function renderGeo() {
+    const rounds = Math.max(1, Math.min(24, Math.floor(Number(document.getElementById("geoRounds").value) || 1)));
+    document.getElementById("geoShape").innerHTML = "<strong>形狀：</strong>" + GEO[geoFactor];
+    document.getElementById("geoSummary").textContent =
+      "每圈 +" + geoFactor + " · 第 " + rounds + " 圈約 " + (geoFactor * rounds) + " 針。";
+    const rows = [];
+    for (let r = 1; r <= rounds; r++) {
+      const stitches = geoFactor * r;
+      let how = "";
+      if (r === 1) how = "魔術環：" + geoFactor + " 短針";
+      else if (r === 2) how = "每針加針 ×" + geoFactor;
+      else how = "(" + (r - 2) + " 短針, 加針) ×" + geoFactor;
+      rows.push({ round: r, stitches, how });
+    }
+    document.getElementById("geoBody").innerHTML = rows.map((r) =>
+      "<tr><td class='num'>" + r.round + "</td><td class='num'>" + r.stitches + "</td><td>" + r.how + "</td></tr>"
+    ).join("");
+  }
+  renderGeo();
 })();
 </script>
 </body>
