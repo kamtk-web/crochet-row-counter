@@ -535,30 +535,60 @@
     position: absolute;
     top: 10px; right: 10px;
     display: flex; flex-direction: column; gap: 6px;
-    z-index: 2;
+    z-index: 20;
+    pointer-events: auto;
+    touch-action: manipulation;
   }
   .sim-zoom-bar button {
-    width: 36px; height: 36px;
-    border-radius: 12px;
+    width: 44px; height: 44px;
+    border-radius: 14px;
     border: 1px solid var(--line);
-    background: rgba(255,250,244,0.92);
-    box-shadow: 0 2px 8px rgba(42,36,28,0.08);
-    font-size: 1.05rem; font-weight: 700;
+    background: rgba(255,250,244,0.96);
+    box-shadow: 0 2px 10px rgba(42,36,28,0.12);
+    font-size: 1.25rem; font-weight: 700;
     color: var(--ink);
     cursor: pointer;
     backdrop-filter: blur(6px);
     line-height: 1;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: auto;
   }
-  .sim-zoom-bar button:active { transform: scale(0.96); }
+  .sim-zoom-bar button:active { transform: scale(0.96); background: #fff; }
   .sim-zoom-bar .sim-zoom-reset {
-    font-size: 0.62rem;
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    line-height: 1.1;
+    line-height: 1.15;
     padding: 4px 2px;
     height: auto;
-    min-height: 36px;
+    min-height: 44px;
+  }
+  .sim-zoom-pct {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--muted);
+    background: rgba(255,250,244,0.92);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 0;
+    pointer-events: none;
+  }
+  .sim-zoom-tools {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    width: 100%;
+  }
+  .sim-zoom-tools .fat { flex: 1 1 72px; min-height: 48px; font-size: 0.92rem; }
+  .sim-zoom-tools .sim-zoom-pct-inline {
+    flex: 0 0 auto;
+    min-width: 64px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--muted);
+    padding: 0 8px;
   }
   .sim-toolbar {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -734,10 +764,11 @@
           <div class="sim-parse" id="simParse" aria-live="polite"></div>
         </div>
 
-        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳轉角度 · 滾輪／雙指縮放" style="padding:0">
+        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳轉角度 · 雙指縮放 · 滾輪縮放" style="padding:0">
           <canvas id="simCanvas" width="400" height="420"></canvas>
-          <div class="sim-zoom-bar" aria-label="縮放">
+          <div class="sim-zoom-bar" id="simZoomBar" aria-label="縮放">
             <button type="button" id="simZoomIn" title="放大">＋</button>
+            <div class="sim-zoom-pct" id="simZoomPct" aria-live="polite">100%</div>
             <button type="button" id="simZoomOut" title="縮小">－</button>
             <button type="button" id="simZoomReset" class="sim-zoom-reset" title="重設視角">重設<br>視角</button>
           </div>
@@ -745,6 +776,13 @@
             <span id="simHudRound">第 0 圈</span>
             <span id="simHudStitch">0 / 0 針</span>
           </div>
+        </div>
+
+        <div class="sim-zoom-tools" aria-label="縮放工具">
+          <button class="fat quiet" id="simZoomIn2" type="button">＋ 放大</button>
+          <span class="sim-zoom-pct-inline" id="simZoomPct2">100%</span>
+          <button class="fat quiet" id="simZoomOut2" type="button">－ 縮小</button>
+          <button class="fat quiet" id="simZoomReset2" type="button">重設視角</button>
         </div>
 
         <div class="sim-toolbar">

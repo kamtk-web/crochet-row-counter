@@ -991,89 +991,189 @@ FO`,
 
   titleEl.addEventListener("input", () => {});
 
+  const zoomPctEl = document.getElementById("simZoomPct");
+  const zoomPctEl2 = document.getElementById("simZoomPct2");
+
   function clampZoom(z) {
     return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
   }
+  function updateZoomLabel() {
+    const label = Math.round(userZoom * 100) + "%";
+    if (zoomPctEl) zoomPctEl.textContent = label;
+    if (zoomPctEl2) zoomPctEl2.textContent = label;
+  }
   function setZoom(z) {
     userZoom = clampZoom(z);
+    updateZoomLabel();
+    autoSpin = false;
     draw();
+    startLoop();
   }
   function resetView() {
     userZoom = 1;
     yaw = 0.55;
     pitch = 0.55;
+    updateZoomLabel();
     draw();
+    startLoop();
   }
   function pointerDist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
-
-  let lastTap = 0;
-  wrap.addEventListener("pointerdown", (e) => {
-    if (e.target.closest && e.target.closest(".sim-zoom-bar")) return;
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    wrap.setPointerCapture(e.pointerId);
+  function pauseSpinBriefly() {
     autoSpin = false;
-    if (pointers.size === 2) {
+    clearTimeout(pauseSpinBriefly._t);
+    pauseSpinBriefly._t = setTimeout(() => {
+      if (!drag && pointers.size === 0 && !pinchStart) {
+        autoSpin = true;
+        startLoop();
+      }
+    }, 1400);
+  }
+
+  // —— Zoom buttons: overlay + toolbar (outside canvas drag) ——
+  function bindZoomButton(el, action) {
+    if (!el) return;
+    let swallowClick = false;
+    const run = () => { action(); pauseSpinBriefly(); };
+    el.addEventListener("pointerdown", (e) => { e.stopPropagation(); });
+    // touchend first on phones; mark to swallow the synthetic click that follows
+    el.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      swallowClick = true;
+      setTimeout(() => { swallowClick = false; }, 450);
+      run();
+    }, { passive: false });
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (swallowClick) { swallowClick = false; return; }
+      run();
+    });
+  }
+  bindZoomButton(document.getElementById("simZoomIn"), () => setZoom(userZoom * 1.25));
+  bindZoomButton(document.getElementById("simZoomOut"), () => setZoom(userZoom / 1.25));
+  bindZoomButton(document.getElementById("simZoomReset"), () => resetView());
+  bindZoomButton(document.getElementById("simZoomIn2"), () => setZoom(userZoom * 1.25));
+  bindZoomButton(document.getElementById("simZoomOut2"), () => setZoom(userZoom / 1.25));
+  bindZoomButton(document.getElementById("simZoomReset2"), () => resetView());
+
+  const zoomBar = document.getElementById("simZoomBar");
+  if (zoomBar) {
+    ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend"].forEach((ev) => {
+      zoomBar.addEventListener(ev, (e) => e.stopPropagation(), { passive: false });
+    });
+  }
+
+  // —— Rotate / pinch on CANVAS only (never steals toolbar/overlay buttons) ——
+  let lastTap = 0;
+  function onCanvasPointerDown(e) {
+    if (e.target !== canvas) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    autoSpin = false;
+    if (pointers.size >= 2) {
+      // Multi-touch: no pointer capture (lets both fingers + TouchEvent pinch work)
       const pts = [...pointers.values()];
       pinchStart = { dist: pointerDist(pts[0], pts[1]), zoom: userZoom };
       drag = null;
     } else if (pointers.size === 1) {
+      // Single-finger rotate — capture so drag continues off-canvas (desktop)
+      if (e.pointerType === "mouse") {
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      }
       const now = performance.now();
       if (now - lastTap < 280) {
         resetView();
         lastTap = 0;
       } else {
         lastTap = now;
+        drag = { x: e.clientX, y: e.clientY, yaw, pitch };
       }
-      drag = { x: e.clientX, y: e.clientY, yaw, pitch };
     }
-  });
-  wrap.addEventListener("pointermove", (e) => {
+  }
+  function onCanvasPointerMove(e) {
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size >= 2 && pinchStart) {
+    if (pointers.size >= 2) {
       const pts = [...pointers.values()];
       const d = pointerDist(pts[0], pts[1]);
-      if (pinchStart.dist > 0) {
+      if (!pinchStart) pinchStart = { dist: d, zoom: userZoom };
+      if (pinchStart.dist > 8) {
         setZoom(pinchStart.zoom * (d / pinchStart.dist));
       }
+      drag = null;
       return;
     }
     if (!drag) return;
     yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
     pitch = Math.max(0.15, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.008));
     draw();
-  });
-  function endDrag(e) {
-    if (e && e.pointerId != null) pointers.delete(e.pointerId);
-    else pointers.clear();
+  }
+  function onCanvasPointerUp(e) {
+    if (e && e.pointerId != null) {
+      pointers.delete(e.pointerId);
+      try { if (canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    } else {
+      pointers.clear();
+    }
     if (pointers.size < 2) pinchStart = null;
     if (pointers.size === 1) {
       const p = [...pointers.values()][0];
       drag = { x: p.x, y: p.y, yaw, pitch };
     } else {
       drag = null;
-      setTimeout(() => { if (!drag && pointers.size === 0) { autoSpin = true; startLoop(); } }, 1000);
+      pauseSpinBriefly();
     }
   }
-  wrap.addEventListener("pointerup", endDrag);
-  wrap.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerdown", onCanvasPointerDown);
+  canvas.addEventListener("pointermove", onCanvasPointerMove);
+  canvas.addEventListener("pointerup", onCanvasPointerUp);
+  canvas.addEventListener("pointercancel", onCanvasPointerUp);
 
-  wrap.addEventListener("wheel", (e) => {
+  // TouchEvent pinch fallback (iOS Safari often better with touches than multi PointerEvent)
+  let touchPinch = null;
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      drag = null;
+      pointers.clear();
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchPinch = { dist: d, zoom: userZoom };
+      autoSpin = false;
+    }
+  }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2 && touchPinch) {
+      e.preventDefault();
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (touchPinch.dist > 8) setZoom(touchPinch.zoom * (d / touchPinch.dist));
+    }
+  }, { passive: false });
+  canvas.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) {
+      touchPinch = null;
+      pauseSpinBriefly();
+    }
+  });
+  canvas.addEventListener("touchcancel", () => { touchPinch = null; });
+
+  function onWheelZoom(e) {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 0.9 : 1.1;
     setZoom(userZoom * factor);
-    autoSpin = false;
-    setTimeout(() => { autoSpin = true; startLoop(); }, 1200);
-  }, { passive: false });
+    pauseSpinBriefly();
+  }
+  wrap.addEventListener("wheel", onWheelZoom, { passive: false });
+  canvas.addEventListener("wheel", onWheelZoom, { passive: false });
 
-  const zin = document.getElementById("simZoomIn");
-  const zout = document.getElementById("simZoomOut");
-  const zreset = document.getElementById("simZoomReset");
-  if (zin) zin.addEventListener("click", (e) => { e.stopPropagation(); setZoom(userZoom * 1.2); });
-  if (zout) zout.addEventListener("click", (e) => { e.stopPropagation(); setZoom(userZoom / 1.2); });
-  if (zreset) zreset.addEventListener("click", (e) => { e.stopPropagation(); resetView(); });
+  updateZoomLabel();
 
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
