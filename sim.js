@@ -401,7 +401,7 @@ FO`,
   const STITCH_H = 0.40;   // vertical pitch between rounds
 
   function layoutStitches(stitches) {
-    // Continuous spiral amigurumi: radius from round size, height from round index within piece
+    // Discrete stacked rounds (層層疊): one shared height per round, then step up
     const out = [];
     let lastPiece = -1;
     let heightCursor = 0;
@@ -427,11 +427,11 @@ FO`,
       const n = j - i;
       const radius = Math.max(0.28, (n * STITCH_ARC) / (Math.PI * 2));
       const roundStart = out.length;
+      // Flat ring: every stitch in this round sits at the same height
+      const y = heightCursor;
       for (let k = 0; k < n; k++) {
         const st = stitches[i + k];
         const ang = (k / n) * Math.PI * 2 - Math.PI / 2;
-        // Spiral rise within round keeps continuous fabric
-        const y = heightCursor + (k / Math.max(n, 1)) * STITCH_H;
         // Parent in previous round: map by angular fraction (handles inc/dec)
         let parentIndex = -1;
         if (prevRoundN > 0 && prevPiece === pieceIndex) {
