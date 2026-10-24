@@ -47,8 +47,30 @@
   .sub {
     color: var(--muted);
     font-size: 0.9rem;
-    margin: 0 0 18px;
+    margin: 0 0 12px;
   }
+  .drive-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 48px;
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--surface-float);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+  }
+  .drive-btn:active { transform: scale(0.985); }
+  .drive-btn span.icon { font-size: 1.15rem; line-height: 1; }
   .tabs {
     display: flex;
     gap: 6px;
@@ -249,6 +271,10 @@
   <div class="wrap">
     <h1>鈎針計行同加針指南</h1>
     <p class="sub">先設目標行數，撳數字加行；到齊有「完成」同煙花。</p>
+    <a class="drive-btn" href="https://drive.google.com/drive/folders/1yclI81DRXybpzn4M_-xHR6NqsR89l9sx" target="_blank" rel="noopener noreferrer">
+      <span class="icon" aria-hidden="true">📁</span>
+      開 Drive 織圖記錄
+    </a>
 
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="counter" type="button">計行</button>
