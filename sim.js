@@ -1126,9 +1126,7 @@ FO`,
   titleEl.addEventListener("input", () => { persistSim(); });
 
   const zoomPctEl = document.getElementById("simZoomPct");
-  const zoomPctEl2 = document.getElementById("simZoomPct2");
   const zoomPctEl3 = document.getElementById("simZoomPct3");
-  const zoomSlider = document.getElementById("simZoomSlider");
   const zoomSlider2 = document.getElementById("simZoomSlider2");
 
   function clampZoom(z) {
@@ -1138,14 +1136,11 @@ FO`,
     const pct = Math.round(userZoom * 100);
     const label = pct + "%";
     if (zoomPctEl) zoomPctEl.textContent = label;
-    if (zoomPctEl2) zoomPctEl2.textContent = label;
     if (zoomPctEl3) zoomPctEl3.textContent = label;
-    [zoomSlider, zoomSlider2].forEach((s) => {
-      if (!s) return;
-      if (document.activeElement === s) return;
-      s.value = String(pct);
-      s.setAttribute("aria-valuenow", String(pct));
-    });
+    if (zoomSlider2 && document.activeElement !== zoomSlider2) {
+      zoomSlider2.value = String(pct);
+      zoomSlider2.setAttribute("aria-valuenow", String(pct));
+    }
   }
   function setZoom(z) {
     userZoom = clampZoom(z);
@@ -1214,11 +1209,8 @@ FO`,
   wireZoomTap(document.getElementById("simZoomIn"), () => window.__simZoom(1.25));
   wireZoomTap(document.getElementById("simZoomOut"), () => window.__simZoom(1 / 1.25));
   wireZoomTap(document.getElementById("simZoomReset"), () => window.__simResetView());
-  wireZoomTap(document.getElementById("simZoomIn2"), () => window.__simZoom(1.25));
-  wireZoomTap(document.getElementById("simZoomOut2"), () => window.__simZoom(1 / 1.25));
-  wireZoomTap(document.getElementById("simZoomReset2"), () => window.__simResetView());
 
-  // —— Impossible-to-miss range sliders (dock + below canvas) ——
+  // —— Bottom zoom slider ——
   function wireSlider(s) {
     if (!s) return;
     const fromSlider = () => {
@@ -1228,7 +1220,6 @@ FO`,
     s.addEventListener("input", fromSlider);
     s.addEventListener("change", fromSlider);
   }
-  wireSlider(zoomSlider);
   wireSlider(zoomSlider2);
 
   // —— Rotate / pinch on CANVAS only ——
