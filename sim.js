@@ -396,9 +396,9 @@ FO`,
   }
 
   /* ——— Geometry ——— */
-  // Tight packing → solid amigurumi fabric (not a sparse wire cage)
-  const STITCH_ARC = 0.34; // arc length per stitch → radius
-  const STITCH_H = 0.26;   // vertical pitch — rows stack into fabric
+  // Middle ground: lightly interlocking Vs (not sparse cage, not fat mush)
+  const STITCH_ARC = 0.46; // arc length per stitch → radius
+  const STITCH_H = 0.40;   // vertical pitch between rounds
 
   function layoutStitches(stitches) {
     // Continuous spiral amigurumi: radius from round size, height from round index within piece
@@ -762,126 +762,126 @@ FO`,
 
   function drawYarnStitch(p, scale, isActive, parent, left) {
     const depthNorm = Math.max(0, Math.min(1, (p.depth + 8) / 16));
-    // Footprint sized to overlap neighbours (closes white gaps)
-    const s = Math.max(4.5, scale * STITCH_ARC * 1.55) * (0.85 + 0.25 * depthNorm);
+    // Footprint tracks spacing, but clamp px so early rounds / high zoom stay readable Vs
+    const sRaw = scale * STITCH_ARC * 0.98;
+    const s = Math.max(3.2, Math.min(20, sRaw)) * (0.85 + 0.25 * depthNorm);
     const col = p.color;
-    const dark = shade(col, -0.28);
-    const mid = shade(col, -0.08);
-    const light = shade(col, 0.18);
-    const fill = shade(col, 0.06);
+    const dark = shade(col, -0.26);
+    const mid = shade(col, -0.1);
+    const light = shade(col, 0.2);
 
     let ax = p.sx;
-    let ay = p.sy + s * 0.95;
+    let ay = p.sy + s * 0.88;
     if (parent) {
-      ax = parent.sx * 0.4 + p.sx * 0.6;
-      ay = parent.sy - s * 0.08; // lock into parent top
+      ax = parent.sx * 0.35 + p.sx * 0.65;
+      ay = parent.sy - s * 0.12; // hook into parent top bar
     }
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    const topY = p.sy - s * 0.18;
-    const halfW = s * 0.66;
+    const topY = p.sy - s * 0.22;
+    const halfW = s * 0.50; // abut neighbours lightly
     const lx = p.sx - halfW;
     const rx = p.sx + halfW;
 
-    // Soft shadow
+    // Soft underside shadow
     ctx.beginPath();
-    ctx.ellipse(p.sx, (ay + p.sy) * 0.55, s * 0.5, s * 0.22, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(42,36,28," + (0.05 + 0.06 * (1 - depthNorm)) + ")";
+    ctx.ellipse(p.sx, (ay + p.sy) * 0.55, s * 0.42, s * 0.16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(42,36,28," + (0.04 + 0.05 * (1 - depthNorm)) + ")";
     ctx.fill();
 
-    // Filled V body — kills cage-like white holes inside each stitch
+    // Very light V fill (readable holes, not opaque blob)
     ctx.beginPath();
-    ctx.moveTo(lx + s * 0.04, topY);
-    ctx.quadraticCurveTo(p.sx - s * 0.08, p.sy + s * 0.15, ax, ay);
-    ctx.quadraticCurveTo(p.sx + s * 0.08, p.sy + s * 0.15, rx - s * 0.04, topY);
-    ctx.quadraticCurveTo(p.sx, topY - s * 0.28, lx + s * 0.04, topY);
+    ctx.moveTo(lx + s * 0.06, topY);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(rx - s * 0.06, topY);
     ctx.closePath();
-    ctx.fillStyle = fill;
-    ctx.globalAlpha = 0.82 + 0.12 * depthNorm;
+    ctx.fillStyle = shade(col, 0.08);
+    ctx.globalAlpha = 0.28 + 0.12 * depthNorm;
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Thick yarn posts
-    const lw = Math.max(3.2, s * 0.62);
+    // Classic thinner posts
+    const lw = Math.max(1.6, s * 0.30);
     ctx.strokeStyle = dark;
     ctx.lineWidth = lw;
     ctx.beginPath();
-    ctx.moveTo(lx + s * 0.05, topY);
-    ctx.quadraticCurveTo(p.sx - s * 0.1, p.sy + s * 0.18, ax - s * 0.02, ay);
+    ctx.moveTo(lx + s * 0.04, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.12, p.sy + s * 0.12, ax - s * 0.03, ay);
     ctx.stroke();
 
     ctx.strokeStyle = light;
     ctx.lineWidth = lw;
     ctx.beginPath();
-    ctx.moveTo(rx - s * 0.05, topY);
-    ctx.quadraticCurveTo(p.sx + s * 0.1, p.sy + s * 0.18, ax + s * 0.02, ay);
+    ctx.moveTo(rx - s * 0.04, topY);
+    ctx.quadraticCurveTo(p.sx + s * 0.12, p.sy + s * 0.12, ax + s * 0.03, ay);
     ctx.stroke();
 
-    // Lock bar through parent
-    ctx.strokeStyle = mid;
-    ctx.lineWidth = Math.max(2.0, s * 0.38);
-    ctx.beginPath();
-    ctx.moveTo(ax - s * 0.3, ay + s * 0.02);
-    ctx.quadraticCurveTo(ax, ay + s * 0.12, ax + s * 0.3, ay + s * 0.02);
-    ctx.stroke();
-
+    // Small lock through parent (緊扣 hint, not a thick tube)
     if (parent) {
-      const ps = Math.max(4.5, scale * STITCH_ARC * 1.55) * (0.85 + 0.25 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
-      const pty = parent.sy - ps * 0.18;
-      const phw = ps * 0.66;
-      ctx.strokeStyle = parent.color;
-      ctx.lineWidth = Math.max(2.2, ps * 0.42);
-      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = mid;
+      ctx.lineWidth = Math.max(1.4, s * 0.22);
       ctx.beginPath();
-      ctx.moveTo(parent.sx - phw * 0.7, pty);
-      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.3, parent.sx + phw * 0.7, pty);
+      ctx.moveTo(ax - s * 0.2, ay);
+      ctx.quadraticCurveTo(ax, ay + s * 0.08, ax + s * 0.2, ay);
+      ctx.stroke();
+
+      const psRaw = scale * STITCH_ARC * 0.98;
+      const ps = Math.max(3.2, Math.min(20, psRaw)) * (0.85 + 0.25 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
+      const pty = parent.sy - ps * 0.22;
+      const phw = ps * 0.52;
+      ctx.strokeStyle = parent.color;
+      ctx.lineWidth = Math.max(1.5, ps * 0.28);
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(parent.sx - phw * 0.55, pty);
+      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.28, parent.sx + phw * 0.55, pty);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    // Twin top loops (front/back)
+    // Top bar / chain loops — thinner
     ctx.strokeStyle = shade(col, -0.12);
-    ctx.lineWidth = Math.max(2.0, s * 0.36);
+    ctx.lineWidth = Math.max(1.3, s * 0.24);
     ctx.beginPath();
-    ctx.ellipse(p.sx - s * 0.16, topY, s * 0.26, s * 0.15, -0.12, 0, Math.PI * 2);
+    ctx.ellipse(p.sx - s * 0.14, topY - s * 0.02, s * 0.2, s * 0.11, -0.12, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(p.sx + s * 0.16, topY, s * 0.26, s * 0.15, 0.12, 0, Math.PI * 2);
+    ctx.ellipse(p.sx + s * 0.14, topY - s * 0.02, s * 0.2, s * 0.11, 0.12, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = col;
-    ctx.lineWidth = Math.max(2.4, s * 0.45);
+    ctx.lineWidth = Math.max(1.6, s * 0.3);
     ctx.beginPath();
     ctx.moveTo(lx, topY);
-    ctx.quadraticCurveTo(p.sx, topY - s * 0.32, rx, topY);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.3, rx, topY);
     ctx.stroke();
 
-    // Neighbour bridge — continuous ridge
+    // Light neighbour bridge
     if (left) {
-      const lTop = left.sy - s * 0.18;
+      const lTop = left.sy - s * 0.22;
       const midX = (left.sx + p.sx) / 2;
-      const midY = (lTop + topY) / 2 - s * 0.05;
+      const midY = (lTop + topY) / 2 - s * 0.04;
       ctx.strokeStyle = mid;
-      ctx.lineWidth = Math.max(2.2, s * 0.4);
+      ctx.lineWidth = Math.max(1.4, s * 0.24);
       ctx.beginPath();
-      ctx.moveTo(left.sx + halfW * 0.75, lTop);
-      ctx.quadraticCurveTo(midX, midY - s * 0.08, lx, topY);
+      ctx.moveTo(left.sx + halfW * 0.65, lTop);
+      ctx.quadraticCurveTo(midX, midY - s * 0.06, lx, topY);
       ctx.stroke();
     }
 
     if (p.kind === "inc") {
       ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, s * 0.09, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy - s * 0.02, s * 0.08, 0, Math.PI * 2);
       ctx.fill();
     }
     if (isActive) {
       ctx.strokeStyle = "rgba(226,59,47,0.4)";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, s * 0.72, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, s * 0.7, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
