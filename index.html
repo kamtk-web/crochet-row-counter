@@ -56,7 +56,7 @@
     gap: 8px;
     width: 100%;
     min-height: 48px;
-    margin: 0 0 16px;
+    margin: 0;
     padding: 12px 16px;
     border-radius: 16px;
     border: 1px solid var(--line);
@@ -65,12 +65,76 @@
     font: inherit;
     font-weight: 700;
     font-size: 0.95rem;
-    text-decoration: none;
+    cursor: pointer;
     box-shadow: var(--shadow);
     touch-action: manipulation;
   }
   .drive-btn:active { transform: scale(0.985); }
+  .drive-btn.open {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
   .drive-btn span.icon { font-size: 1.15rem; line-height: 1; }
+  .drive-wrap { margin: 0 0 16px; }
+  .drive-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.55s ease;
+    margin-top: 0;
+  }
+  .drive-panel.open {
+    grid-template-rows: 1fr;
+    margin-top: 10px;
+  }
+  .drive-panel-inner {
+    overflow: hidden;
+    min-height: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.45s ease 0.05s, transform 0.45s ease 0.05s;
+  }
+  .drive-panel.open .drive-panel-inner {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .drive-card {
+    background: var(--surface-float);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 12px;
+  }
+  .drive-card .note { margin: 8px 0 0; }
+  .drive-frame-wrap {
+    margin-top: 10px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    min-height: 420px;
+    position: relative;
+  }
+  .drive-frame-wrap iframe {
+    width: 100%;
+    height: 480px;
+    border: 0;
+    display: block;
+    background: #fff;
+  }
+  .drive-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .drive-loading.hide { opacity: 0; }
   .tabs {
     display: flex;
     gap: 6px;
@@ -271,10 +335,24 @@
   <div class="wrap">
     <h1>鈎針計行同加針指南</h1>
     <p class="sub">先設目標行數，撳數字加行；到齊有「完成」同煙花。</p>
-    <a class="drive-btn" href="https://drive.google.com/drive/folders/1yclI81DRXybpzn4M_-xHR6NqsR89l9sx" target="_blank" rel="noopener noreferrer">
-      <span class="icon" aria-hidden="true">📁</span>
-      開 Drive 織圖記錄
-    </a>
+    <div class="drive-wrap">
+      <button class="drive-btn" id="btnDrive" type="button" aria-expanded="false" aria-controls="drivePanel">
+        <span class="icon" aria-hidden="true">📁</span>
+        <span id="btnDriveLabel">睇織圖記錄</span>
+      </button>
+      <div class="drive-panel" id="drivePanel">
+        <div class="drive-panel-inner">
+          <div class="drive-card">
+            <div class="chip-row" id="driveFolders"></div>
+            <div class="drive-frame-wrap">
+              <div class="drive-loading" id="driveLoading">載入緊…</div>
+              <iframe id="driveFrame" title="Drive 織圖記錄" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+            <p class="note">喺呢頁慢慢打開你 Drive「織織」；要登入 Google 先睇到私人檔。用上面分類掣切換資料夾。</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="counter" type="button">計行</button>
@@ -473,6 +551,58 @@
     save(state);
     stopFx();
     showSetup();
+  });
+
+  /* —— In-page Drive library —— */
+  const DRIVE_FOLDERS = [
+    { id: "1yclI81DRXybpzn4M_-xHR6NqsR89l9sx", name: "全部・織織" },
+    { id: "1H3D5tgkx4wzUNuF-M701oSaOY9vCoX-e", name: "上衣" },
+    { id: "1eFnzVmWDwkdoO4Kv5Nq0wLByPif0rtvU", name: "方塊" },
+    { id: "1t4WzUlNYYR5qHvsZqW_GRZaKj22av9EZ", name: "毯子" },
+    { id: "1wwjJOR8wWGkSNeDcyN_D3-t_2IIbtS_t", name: "袋" },
+    { id: "1nJBltGKRlfAQ98Wege4YL5rCHJSSpCr5", name: "公仔" },
+    { id: "1-_fG_T51UFhI4ZEtSNPFPDIklYhlbSf-", name: "寵物" },
+    { id: "1XjUlPc47lF6iwDdGLwAsJ1B77BkZgkK7", name: "帽" },
+    { id: "1mVQR3gy3vlT2D2wDeZKnyU2iF01Q2bt6", name: "花邊" },
+  ];
+  const btnDrive = document.getElementById("btnDrive");
+  const btnDriveLabel = document.getElementById("btnDriveLabel");
+  const drivePanel = document.getElementById("drivePanel");
+  const driveFrame = document.getElementById("driveFrame");
+  const driveLoading = document.getElementById("driveLoading");
+  const driveFoldersEl = document.getElementById("driveFolders");
+  let driveOpen = false;
+  let driveLoadedId = "";
+
+  function driveEmbedUrl(id) {
+    return "https://drive.google.com/embeddedfolderview?id=" + encodeURIComponent(id) + "#grid";
+  }
+  function loadDriveFolder(id) {
+    if (driveLoadedId === id && driveFrame.src) return;
+    driveLoading.classList.remove("hide");
+    driveLoadedId = id;
+    driveFrame.onload = () => driveLoading.classList.add("hide");
+    driveFrame.src = driveEmbedUrl(id);
+  }
+  DRIVE_FOLDERS.forEach((f, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (i === 0 ? " on" : "");
+    b.textContent = f.name;
+    b.addEventListener("click", () => {
+      driveFoldersEl.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      loadDriveFolder(f.id);
+    });
+    driveFoldersEl.appendChild(b);
+  });
+  btnDrive.addEventListener("click", () => {
+    driveOpen = !driveOpen;
+    drivePanel.classList.toggle("open", driveOpen);
+    btnDrive.classList.toggle("open", driveOpen);
+    btnDrive.setAttribute("aria-expanded", driveOpen ? "true" : "false");
+    btnDriveLabel.textContent = driveOpen ? "收埋織圖記錄" : "睇織圖記錄";
+    if (driveOpen) loadDriveFolder(DRIVE_FOLDERS[0].id);
   });
 
   document.querySelectorAll(".tab").forEach((tab) => {
