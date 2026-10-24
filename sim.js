@@ -396,34 +396,50 @@ FO`,
   }
 
   /* ——— Geometry ——— */
-  const STITCH_ARC = 1.0; // arc length per stitch → radius
-  const STITCH_H = 0.85;
+  // Denser packing so neighbouring Vs abut / lock (緊扣), not float as separate dots
+  const STITCH_ARC = 0.58; // arc length per stitch → radius (tighter ring for 緊扣)
+  const STITCH_H = 0.58;   // vertical pitch ≈ stitch height so legs reach parent top
 
   function layoutStitches(stitches) {
     // Continuous spiral amigurumi: radius from round size, height from round index within piece
     const out = [];
-    let pieceHeights = {}; // pieceIndex → next height base
     let lastPiece = -1;
     let heightCursor = 0;
+    // Track previous round's global indices for parent linking
+    let prevRoundStart = -1;
+    let prevRoundN = 0;
+    let prevPiece = -1;
 
-    // group sequentially (already in order)
     let i = 0;
     while (i < stitches.length) {
       const st0 = stitches[i];
       if (st0.pieceIndex !== lastPiece) {
         if (lastPiece >= 0) heightCursor += 2.5; // gap between pieces
         lastPiece = st0.pieceIndex;
+        prevRoundStart = -1;
+        prevRoundN = 0;
+        prevPiece = st0.pieceIndex;
       }
       const round = st0.round;
       const pieceIndex = st0.pieceIndex;
       let j = i;
       while (j < stitches.length && stitches[j].pieceIndex === pieceIndex && stitches[j].round === round) j++;
       const n = j - i;
-      const radius = Math.max(0.55, (n * STITCH_ARC) / (Math.PI * 2));
+      const radius = Math.max(0.42, (n * STITCH_ARC) / (Math.PI * 2));
+      const roundStart = out.length;
       for (let k = 0; k < n; k++) {
         const st = stitches[i + k];
         const ang = (k / n) * Math.PI * 2 - Math.PI / 2;
+        // Spiral rise within round keeps continuous fabric
         const y = heightCursor + (k / Math.max(n, 1)) * STITCH_H;
+        // Parent in previous round: map by angular fraction (handles inc/dec)
+        let parentIndex = -1;
+        if (prevRoundN > 0 && prevPiece === pieceIndex) {
+          const pk = Math.min(prevRoundN - 1, Math.floor((k + 0.5) * prevRoundN / n));
+          parentIndex = prevRoundStart + pk;
+        }
+        // Left neighbour in same round (for shared top-chain)
+        const leftIndex = k > 0 ? roundStart + k - 1 : (n > 1 ? roundStart + n - 1 : -1);
         out.push({
           ...st,
           x: Math.cos(ang) * radius,
@@ -432,8 +448,16 @@ FO`,
           ang,
           radius,
           globalIndex: i + k,
+          parentIndex,
+          leftIndex: k > 0 ? leftIndex : -1, // only prior-in-draw-order left; wrap handled later
+          roundStart,
+          roundN: n,
+          kInRound: k,
         });
       }
+      prevRoundStart = roundStart;
+      prevRoundN = n;
+      prevPiece = pieceIndex;
       heightCursor += STITCH_H;
       i = j;
     }
@@ -688,8 +712,15 @@ FO`,
         idx,
         ang: p.ang,
         raw: p,
+        parentIndex: p.parentIndex,
+        kInRound: p.kInRound,
+        roundN: p.roundN,
+        roundStart: p.roundStart,
       };
     });
+    // Index by stitch order for parent / neighbour lookups (before depth sort)
+    const byIdx = new Array(projected.length);
+    projected.forEach((p) => { byIdx[p.idx] = p; });
     projected.sort((a, b) => a.depth - b.depth);
 
     const simplify = nShow > 500;
@@ -697,7 +728,14 @@ FO`,
 
     for (const p of projected) {
       if (simplify && p.depth < -maxR * 0.15 && (p.idx % 2 === 0)) continue;
-      drawYarnStitch(p, scale, p.idx === nShow - 1);
+      const parent = (p.parentIndex >= 0 && p.parentIndex < nShow) ? byIdx[p.parentIndex] : null;
+      // Left neighbour already drawn in same round (for shared top-chain abut)
+      let left = null;
+      if (p.kInRound > 0) {
+        const li = p.roundStart + p.kInRound - 1;
+        if (li < nShow) left = byIdx[li];
+      }
+      drawYarnStitch(p, scale, p.idx === nShow - 1, parent, left);
     }
 
     // red needle / marker on current stitch
@@ -716,57 +754,118 @@ FO`,
     }
   }
 
-  function drawYarnStitch(p, scale, isActive) {
+  function drawYarnStitch(p, scale, isActive, parent, left) {
     const depthNorm = Math.max(0, Math.min(1, (p.depth + 8) / 16));
-    const s = Math.max(3.2, scale * 0.42) * (0.75 + 0.35 * depthNorm);
+    // Footprint ≈ STITCH_ARC so neighbouring tops abut into continuous fabric
+    const s = Math.max(3.6, scale * 0.58) * (0.8 + 0.3 * depthNorm);
     const col = p.color;
-    const dark = shade(col, -0.25);
-    const light = shade(col, 0.18);
+    const dark = shade(col, -0.3);
+    const mid = shade(col, -0.1);
+    const light = shade(col, 0.22);
 
-    // soft underside
-    ctx.beginPath();
-    ctx.ellipse(p.sx, p.sy + s * 0.15, s * 0.55, s * 0.28, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(42,36,28," + (0.08 + 0.08 * (1 - depthNorm)) + ")";
-    ctx.fill();
+    // Where this stitch locks into the previous round's top loops
+    let ax = p.sx;
+    let ay = p.sy + s * 1.05;
+    if (parent) {
+      ax = parent.sx * 0.45 + p.sx * 0.55;
+      ay = parent.sy - s * 0.18; // sit inside parent's top bar
+    }
 
-    // V / loop: two arcs meeting at bottom (classic amigurumi V)
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.lineWidth = Math.max(1.6, s * 0.38);
 
-    // left leg
+    const topY = p.sy - s * 0.22;
+    const halfW = s * 0.62; // wide → abut left/right neighbours
+    const lx = p.sx - halfW;
+    const rx = p.sx + halfW;
+
+    // Soft underside
+    ctx.beginPath();
+    ctx.ellipse(p.sx, (ay + p.sy) * 0.5, s * 0.48, s * 0.2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(42,36,28," + (0.05 + 0.07 * (1 - depthNorm)) + ")";
+    ctx.fill();
+
+    // --- Posts (V legs) pulling through parent ---
     ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(2.2, s * 0.44);
     ctx.beginPath();
-    ctx.moveTo(p.sx - s * 0.45, p.sy - s * 0.35);
-    ctx.quadraticCurveTo(p.sx - s * 0.2, p.sy + s * 0.05, p.sx, p.sy + s * 0.4);
+    ctx.moveTo(lx + s * 0.06, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.12, p.sy + s * 0.2, ax - s * 0.04, ay);
     ctx.stroke();
 
-    // right leg
     ctx.strokeStyle = light;
+    ctx.lineWidth = Math.max(2.2, s * 0.44);
     ctx.beginPath();
-    ctx.moveTo(p.sx + s * 0.45, p.sy - s * 0.35);
-    ctx.quadraticCurveTo(p.sx + s * 0.2, p.sy + s * 0.05, p.sx, p.sy + s * 0.4);
+    ctx.moveTo(rx - s * 0.06, topY);
+    ctx.quadraticCurveTo(p.sx + s * 0.12, p.sy + s * 0.2, ax + s * 0.04, ay);
     ctx.stroke();
 
-    // top bridge (yarn bar)
-    ctx.strokeStyle = col;
-    ctx.lineWidth = Math.max(1.4, s * 0.32);
+    // Cross at lock point (yarn going through parent's loops)
+    ctx.strokeStyle = mid;
+    ctx.lineWidth = Math.max(1.7, s * 0.32);
     ctx.beginPath();
-    ctx.moveTo(p.sx - s * 0.42, p.sy - s * 0.32);
-    ctx.quadraticCurveTo(p.sx, p.sy - s * 0.5, p.sx + s * 0.42, p.sy - s * 0.32);
+    ctx.moveTo(ax - s * 0.28, ay + s * 0.02);
+    ctx.quadraticCurveTo(ax, ay + s * 0.14, ax + s * 0.28, ay + s * 0.02);
     ctx.stroke();
+
+    // Redraw a slice of parent's top bar OVER the legs → true 緊扣 look
+    if (parent) {
+      const ps = Math.max(3.6, scale * 0.58) * (0.8 + 0.3 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
+      const pty = parent.sy - ps * 0.22;
+      const phw = ps * 0.62;
+      ctx.strokeStyle = parent.color;
+      ctx.lineWidth = Math.max(1.8, ps * 0.36);
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath();
+      ctx.moveTo(parent.sx - phw * 0.55, pty);
+      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.32, parent.sx + phw * 0.55, pty);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- This stitch's top loops (front + back) ---
+    // Back loop
+    ctx.strokeStyle = shade(col, -0.14);
+    ctx.lineWidth = Math.max(1.6, s * 0.3);
+    ctx.beginPath();
+    ctx.ellipse(p.sx - s * 0.18, topY - s * 0.02, s * 0.28, s * 0.16, -0.15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(p.sx + s * 0.18, topY - s * 0.02, s * 0.28, s * 0.16, 0.15, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Front chain bar linking the two loops
+    ctx.strokeStyle = col;
+    ctx.lineWidth = Math.max(2.0, s * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(lx, topY);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.36, rx, topY);
+    ctx.stroke();
+
+    // Shared yarn with left neighbour → continuous ring, not dotted Vs
+    if (left) {
+      const lTop = left.sy - s * 0.22;
+      const midX = (left.sx + p.sx) / 2;
+      const midY = (lTop + topY) / 2 - s * 0.06;
+      ctx.strokeStyle = mid;
+      ctx.lineWidth = Math.max(1.7, s * 0.32);
+      ctx.beginPath();
+      ctx.moveTo(left.sx + halfW * 0.7, lTop);
+      ctx.quadraticCurveTo(midX, midY - s * 0.1, lx, topY);
+      ctx.stroke();
+    }
 
     if (p.kind === "inc") {
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy - s * 0.1, s * 0.12, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy - s * 0.02, s * 0.1, 0, Math.PI * 2);
       ctx.fill();
     }
     if (isActive) {
       ctx.strokeStyle = "rgba(226,59,47,0.45)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, s * 0.75, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, s * 0.8, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
