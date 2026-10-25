@@ -34,6 +34,7 @@
   const PRESETS = [
     {
       id: "cookie-cat",
+      preferredMode: "3d",
       label: "織織・餅乾夾心貓",
       title: "餅乾夾心貓",
       colors: { A: "#f5f0e6", B: "#c4a574", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
@@ -60,6 +61,7 @@ FO`,
     },
     {
       id: "coffee-cup",
+      preferredMode: "3d",
       label: "織織・咖啡杯",
       title: "咖啡杯",
       colors: { A: "#c4a574", B: "#f5f0e6", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
@@ -74,6 +76,7 @@ FO`,
     },
     {
       id: "sphere",
+      preferredMode: "3d",
       label: "小球／球體",
       title: "小球",
       colors: { A: "#e8a06a", B: "#5c4030", C: "#e05a4a", D: "#f0a03a", E: "#f5d76e", F: "#f2a0b8" },
@@ -93,6 +96,7 @@ FO`,
       id: "flat",
       label: "平面圓",
       title: "平面圓",
+      preferredMode: "flat",
       colors: { A: "#d4c4a8", B: "#5c4030", C: "#e05a4a", D: "#f0a03a", E: "#f5d76e", F: "#f2a0b8" },
       pattern:
 `Disk, with A:
@@ -105,7 +109,30 @@ Rnd 6: (4 sc, inc) x8 (48)
 Rnds 7-8: sc around (48)`,
     },
     {
+      id: "mandala",
+      label: "花曼陀羅",
+      title: "花曼陀羅杯墊",
+      preferredMode: "flat",
+      colors: { A: "#b89bc9", B: "#f3efe6", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
+      pattern:
+`Mandala, with A:
+Rnd 1: 6 sc in MR (6)
+Rnd 2: inc x6 (12)
+Rnd 3: (sc, inc) x6 (18)
+Rnd 4: (2 sc, inc) x6 (24)
+Rnd 5: (3 sc, inc) x6 (30)
+Rnd 6: (4 sc, inc) x6 (36)
+Rnd 7: change to B, (5 sc, inc) x6 (42)
+Rnd 8: sc around (42)
+Rnd 9: (6 sc, inc) x6 (48)
+Rnd 10: sc around (48)
+Rnd 11: (7 sc, inc) x6 (54)
+Rnd 12: sc around (54)
+FO`,
+    },
+    {
       id: "chick",
+      preferredMode: "3d",
       label: "小雞頭",
       title: "小雞頭",
       colors: { A: "#f5f0e6", B: "#f5d76e", C: "#5c4030", D: "#e05a4a", E: "#f0a03a", F: "#f2a0b8" },
@@ -550,6 +577,82 @@ FO`,
     return out;
   }
 
+
+  function layoutFlatStitches(stitches) {
+    // Top-down polar layout: concentric rounds on a plane (chart / 杯墊 view)
+    const out = [];
+    let lastPiece = -1;
+    let pieceOffsetX = 0;
+    let prevRoundStart = -1;
+    let prevRoundN = 0;
+    let prevPiece = -1;
+    let pieceCount = 0;
+
+    let i = 0;
+    while (i < stitches.length) {
+      const st0 = stitches[i];
+      if (st0.pieceIndex !== lastPiece) {
+        if (lastPiece >= 0) {
+          pieceCount += 1;
+          pieceOffsetX = pieceCount * 6.5; // side-by-side pieces in flat view
+        }
+        lastPiece = st0.pieceIndex;
+        prevRoundStart = -1;
+        prevRoundN = 0;
+        prevPiece = st0.pieceIndex;
+      }
+      const round = st0.round;
+      const pieceIndex = st0.pieceIndex;
+      let j = i;
+      while (j < stitches.length && stitches[j].pieceIndex === pieceIndex && stitches[j].round === round) j++;
+      const n = j - i;
+      // Even ring spacing (chart-like) with slight growth from stitch density
+      // Chart-like even rings; slight bump when a round is very dense
+      const radius = Math.max(0.28, 0.42 + (round - 1) * 0.58 + Math.max(0, n - 12) * 0.008);
+      const roundStart = out.length;
+      for (let k = 0; k < n; k++) {
+        const st = stitches[i + k];
+        const ang = (k / n) * Math.PI * 2 - Math.PI / 2;
+        let parentIndex = -1;
+        if (prevRoundN > 0 && prevPiece === pieceIndex) {
+          const pk = Math.min(prevRoundN - 1, Math.floor((k + 0.5) * prevRoundN / n));
+          parentIndex = prevRoundStart + pk;
+        }
+        out.push({
+          ...st,
+          x: Math.cos(ang) * radius + pieceOffsetX,
+          y: 0,
+          z: Math.sin(ang) * radius,
+          ang,
+          radius,
+          globalIndex: i + k,
+          parentIndex,
+          leftIndex: k > 0 ? roundStart + k - 1 : -1,
+          roundStart,
+          roundN: n,
+          kInRound: k,
+          flat: true,
+        });
+      }
+      prevRoundStart = roundStart;
+      prevRoundN = n;
+      prevPiece = pieceIndex;
+      i = j;
+    }
+    // center on pieces
+    if (out.length) {
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      out.forEach((p) => {
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+      });
+      const cx = (minX + maxX) / 2;
+      const cz = (minZ + maxZ) / 2;
+      out.forEach((p) => { p.x -= cx; p.z -= cz; });
+    }
+    return out;
+  }
+
   /* ——— DOM refs ——— */
   const panel = document.getElementById("panel-sim");
   if (!panel) return;
@@ -588,6 +691,10 @@ FO`,
   let pinchStart = null;
   let activePreset = "sphere";
   let activeColorKey = "A";
+  let viewMode = "3d"; // "3d" | "flat"
+  let panX = 0;
+  let panY = 0;
+  let flatRot = 0; // in-plane rotation for flat mode
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -612,6 +719,7 @@ FO`,
         colors: colors,
         activeColorKey: activeColorKey,
         activePreset: activePreset,
+        viewMode: viewMode,
         title: titleEl ? titleEl.value : "",
         pattern: textareaEl ? textareaEl.value : patternText,
       }));
@@ -687,6 +795,63 @@ FO`,
     });
   }
 
+
+  function renderModeToggle() {
+    const b3 = document.getElementById("simMode3d");
+    const bf = document.getElementById("simModeFlat");
+    const hint = document.getElementById("simModeHint");
+    if (b3) {
+      b3.classList.toggle("on", viewMode === "3d");
+      b3.setAttribute("aria-pressed", viewMode === "3d" ? "true" : "false");
+    }
+    if (bf) {
+      bf.classList.toggle("on", viewMode === "flat");
+      bf.setAttribute("aria-pressed", viewMode === "flat" ? "true" : "false");
+    }
+    if (hint) {
+      hint.textContent = viewMode === "flat"
+        ? "平面：由中心向外填圓形圖／杯墊"
+        : "立體：層層疊 3D 公仔";
+    }
+    if (wrap) {
+      wrap.title = viewMode === "flat"
+        ? "平面：拖曳平移 · 雙指／滾輪縮放 · 雙擊重設"
+        : "立體：拖曳轉角度 · 雙指縮放 · 滾輪縮放";
+    }
+  }
+
+  function setViewMode(mode, doReparse) {
+    const next = mode === "flat" ? "flat" : "3d";
+    if (viewMode === next && doReparse !== true) {
+      renderModeToggle();
+      return;
+    }
+    viewMode = next;
+    if (viewMode === "flat") {
+      autoSpin = false;
+      // mild top-down reset of 3d angles kept for switch-back
+    } else {
+      autoSpin = true;
+    }
+    renderModeToggle();
+    if (doReparse !== false) {
+      const keep = cursor;
+      reparse(false);
+      cursor = Math.min(keep, laid.length);
+      updateHud();
+      renderLines();
+      draw();
+    }
+    persistSim();
+    startLoop();
+  }
+
+
+  const mode3dBtn = document.getElementById("simMode3d");
+  const modeFlatBtn = document.getElementById("simModeFlat");
+  if (mode3dBtn) mode3dBtn.addEventListener("click", () => setViewMode("3d"));
+  if (modeFlatBtn) modeFlatBtn.addEventListener("click", () => setViewMode("flat"));
+
   function renderPresets() {
     presetsEl.innerHTML = "";
     PRESETS.forEach((p) => {
@@ -707,6 +872,9 @@ FO`,
     titleEl.value = p.title;
     textareaEl.value = p.pattern;
     patternText = p.pattern;
+    if (p.preferredMode === "flat" || p.preferredMode === "3d") {
+      setViewMode(p.preferredMode, false);
+    }
     renderPresets();
     renderSwatches();
     renderYarnPalette();
@@ -718,7 +886,9 @@ FO`,
   function reparse(reset) {
     patternText = textareaEl.value;
     parsed = parsePattern(patternText, colors);
-    laid = layoutStitches(parsed.stitches);
+    laid = viewMode === "flat"
+      ? layoutFlatStitches(parsed.stitches)
+      : layoutStitches(parsed.stitches);
     if (reset) {
       cursor = 0;
       playing = false;
@@ -810,6 +980,14 @@ FO`,
   }
 
   function draw() {
+    if (viewMode === "flat") {
+      drawFlat();
+      return;
+    }
+    draw3d();
+  }
+
+  function draw3d() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
@@ -1018,6 +1196,227 @@ FO`,
     }
   }
 
+
+  function drawFlat() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+
+    // soft studio pad (looks like chart paper on dark UI)
+    const padR = Math.min(w, h) * 0.46;
+    const cx0 = w * 0.5 + panX;
+    const cy0 = h * 0.5 + panY;
+    ctx.beginPath();
+    ctx.arc(cx0, cy0, padR * 1.02, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(246, 241, 232, 0.07)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(240,230,216,0.12)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const nShow = Math.min(cursor, laid.length);
+    if (nShow === 0) {
+      // faint guide rings from pattern
+      if (laid.length) {
+        let maxR0 = 0.35;
+        laid.forEach((p) => { maxR0 = Math.max(maxR0, Math.hypot(p.x, p.z) + 0.35); });
+        const sc0 = (Math.min(w, h) * 0.42 / maxR0) * userZoom;
+        drawFlatGuides(cx0, cy0, sc0, laid);
+      }
+      ctx.fillStyle = "rgba(168,152,136,0.9)";
+      ctx.font = "600 14px PingFang HK, Noto Sans TC, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("平面模式：由中心向外一針一針填", w / 2, h * 0.48);
+      ctx.font = "500 12px PingFang HK, Noto Sans TC, sans-serif";
+      ctx.fillStyle = "rgba(168,152,136,0.7)";
+      ctx.fillText("試吓「花曼陀羅」預設", w / 2, h * 0.48 + 22);
+      return;
+    }
+
+    const pts = laid.slice(0, nShow);
+    let maxR = 0.35;
+    pts.forEach((p) => { maxR = Math.max(maxR, Math.hypot(p.x, p.z) + 0.35); });
+    // also peek full pattern radius so zoom stays stable while filling
+    laid.forEach((p) => { maxR = Math.max(maxR, Math.hypot(p.x, p.z) + 0.35); });
+    const scale = (Math.min(w, h) * 0.42 / maxR) * userZoom;
+
+    // ghost rings for remaining rounds
+    drawFlatGuides(cx0, cy0, scale, laid);
+
+    const cosR = Math.cos(flatRot);
+    const sinR = Math.sin(flatRot);
+    function map(p) {
+      const rx = p.x * cosR - p.z * sinR;
+      const rz = p.x * sinR + p.z * cosR;
+      return {
+        sx: cx0 + rx * scale,
+        sy: cy0 + rz * scale,
+        ang: p.ang + flatRot,
+        radius: p.radius,
+        color: colors[p.color] || colors.A,
+        kind: p.kind,
+        idx: p.globalIndex,
+        raw: p,
+        parentIndex: p.parentIndex,
+        kInRound: p.kInRound,
+        roundStart: p.roundStart,
+        roundN: p.roundN,
+      };
+    }
+
+    const projected = pts.map(map);
+    const byIdx = {};
+    projected.forEach((p) => { byIdx[p.idx] = p; });
+    // draw inner rounds first
+    projected.sort((a, b) => (a.raw.radius - b.raw.radius) || (a.idx - b.idx));
+
+    const stitchPx = Math.max(4.5, Math.min(18, scale * 0.42));
+    for (const p of projected) {
+      const parent = (p.parentIndex >= 0 && byIdx[p.parentIndex]) ? byIdx[p.parentIndex] : null;
+      let left = null;
+      if (p.kInRound > 0) {
+        const li = laid[p.roundStart + p.kInRound - 1];
+        if (li && byIdx[li.globalIndex]) left = byIdx[li.globalIndex];
+      }
+      drawFlatYarnStitch(p, stitchPx, p.idx === nShow - 1, parent, left);
+    }
+
+    const needle = byIdx[laid[nShow - 1].globalIndex];
+    if (needle) {
+      ctx.strokeStyle = "#e23b2f";
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(needle.sx, needle.sy - 20);
+      ctx.lineTo(needle.sx, needle.sy + 5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(needle.sx, needle.sy - 22, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#e23b2f";
+      ctx.fill();
+      // small arc tick on current stitch
+      ctx.strokeStyle = "rgba(226,59,47,0.55)";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(needle.sx, needle.sy, stitchPx * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function drawFlatGuides(cx, cy, scale, allLaid) {
+    if (!allLaid || !allLaid.length) return;
+    const seen = new Set();
+    const unitScale = (scale && scale > 8) ? scale : 40; // px per world unit
+    ctx.save();
+    ctx.strokeStyle = "rgba(240,230,216,0.11)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    allLaid.forEach((p) => {
+      const key = p.pieceIndex + ":" + p.round;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const rr = Math.max(4, (p.radius || Math.hypot(p.x, p.z) || 0.3) * unitScale);
+      ctx.beginPath();
+      ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawFlatYarnStitch(p, s, isActive, parent, left) {
+    const col = p.color;
+    const dark = shade(col, -0.22);
+    const light = shade(col, 0.18);
+    const mid = shade(col, -0.06);
+    const ang = p.ang;
+    // radial = toward outside; tangential along the round
+    const tx = -Math.sin(ang);
+    const ty = Math.cos(ang);
+    const rx = Math.cos(ang);
+    const ry = Math.sin(ang);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // soft yarn body (top-down oval along the round)
+    ctx.beginPath();
+    ctx.ellipse(p.sx, p.sy, s * 0.55, s * 0.32, ang + Math.PI / 2, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.92;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1.1, s * 0.12);
+    ctx.stroke();
+
+    // highlight strand
+    ctx.strokeStyle = light;
+    ctx.lineWidth = Math.max(1.2, s * 0.18);
+    ctx.beginPath();
+    ctx.moveTo(p.sx - tx * s * 0.35, p.sy - ty * s * 0.35);
+    ctx.quadraticCurveTo(p.sx - rx * s * 0.08, p.sy - ry * s * 0.08, p.sx + tx * s * 0.35, p.sy + ty * s * 0.35);
+    ctx.stroke();
+
+    // V / post hint pointing slightly outward (like looking into a sc)
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1.3, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(p.sx - tx * s * 0.28, p.sy - ty * s * 0.28);
+    ctx.lineTo(p.sx + rx * s * 0.18, p.sy + ry * s * 0.18);
+    ctx.lineTo(p.sx + tx * s * 0.28, p.sy + ty * s * 0.28);
+    ctx.stroke();
+
+    // radial link into parent (locks to previous round)
+    if (parent) {
+      ctx.strokeStyle = mid;
+      ctx.lineWidth = Math.max(1.2, s * 0.16);
+      ctx.globalAlpha = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(parent.sx + rx * s * 0.15, parent.sy + ry * s * 0.15);
+      ctx.quadraticCurveTo(
+        (parent.sx + p.sx) / 2 - tx * s * 0.05,
+        (parent.sy + p.sy) / 2 - ty * s * 0.05,
+        p.sx - rx * s * 0.2,
+        p.sy - ry * s * 0.2
+      );
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // neighbour bridge along the round
+    if (left) {
+      ctx.strokeStyle = shade(col, -0.1);
+      ctx.lineWidth = Math.max(1.4, s * 0.22);
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(left.sx + tx * s * 0.25, left.sy + ty * s * 0.25);
+      ctx.quadraticCurveTo(
+        (left.sx + p.sx) / 2 + rx * s * 0.12,
+        (left.sy + p.sy) / 2 + ry * s * 0.12,
+        p.sx - tx * s * 0.25,
+        p.sy - ty * s * 0.25
+      );
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    if (p.kind === "inc") {
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath();
+      ctx.arc(p.sx + rx * s * 0.1, p.sy + ry * s * 0.1, s * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (isActive) {
+      ctx.strokeStyle = "rgba(226,59,47,0.35)";
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, s * 0.75, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
   function updateHud() {
     const nShow = Math.min(cursor, laid.length);
     let round = 0, roundSize = 0, idx = 0;
@@ -1046,7 +1445,7 @@ FO`,
       return;
     }
     raf = requestAnimationFrame(tick);
-    if (autoSpin && !drag) yaw += 0.006;
+    if (viewMode === "3d" && autoSpin && !drag) yaw += 0.006;
 
     if (playing) {
       const speed = Number(speedEl.value) || 5; // 1..10
@@ -1153,6 +1552,9 @@ FO`,
     userZoom = 1;
     yaw = 0.55;
     pitch = 0.55;
+    panX = 0;
+    panY = 0;
+    flatRot = 0;
     updateZoomLabel();
     draw();
     startLoop();
@@ -1165,7 +1567,7 @@ FO`,
     clearTimeout(pauseSpinBriefly._t);
     pauseSpinBriefly._t = setTimeout(() => {
       if (!drag && pointers.size === 0 && !pinchStart) {
-        autoSpin = true;
+        if (viewMode === "3d") autoSpin = true;
         startLoop();
       }
     }, 1400);
@@ -1242,7 +1644,9 @@ FO`,
         lastTap = 0;
       } else {
         lastTap = now;
-        drag = { x: e.clientX, y: e.clientY, yaw, pitch };
+        drag = viewMode === "flat"
+          ? { x: e.clientX, y: e.clientY, panX, panY, flat: true }
+          : { x: e.clientX, y: e.clientY, yaw, pitch, flat: false };
       }
     }
   }
@@ -1260,8 +1664,13 @@ FO`,
       return;
     }
     if (!drag) return;
-    yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
-    pitch = Math.max(0.15, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.008));
+    if (drag.flat || viewMode === "flat") {
+      panX = drag.panX + (e.clientX - drag.x);
+      panY = drag.panY + (e.clientY - drag.y);
+    } else {
+      yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
+      pitch = Math.max(0.15, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.008));
+    }
     draw();
   }
   function onCanvasPointerUp(e) {
@@ -1274,7 +1683,9 @@ FO`,
     if (pointers.size < 2) pinchStart = null;
     if (pointers.size === 1) {
       const p = [...pointers.values()][0];
-      drag = { x: p.x, y: p.y, yaw, pitch };
+      drag = viewMode === "flat"
+        ? { x: p.x, y: p.y, panX, panY, flat: true }
+        : { x: p.x, y: p.y, yaw, pitch, flat: false };
     } else {
       drag = null;
       pauseSpinBriefly();
@@ -1343,10 +1754,18 @@ FO`,
   // init
   renderPresets();
   const saved = loadPersistedSim();
+  if (saved && (saved.viewMode === "flat" || saved.viewMode === "3d")) {
+    viewMode = saved.viewMode;
+  }
+  renderModeToggle();
   const startId = (saved && PRESETS.some((p) => p.id === saved.activePreset))
     ? saved.activePreset
     : "cookie-cat";
   loadPreset(startId);
+  // loadPreset may override mode via preferredMode; honor saved mode if user had one
+  if (saved && (saved.viewMode === "flat" || saved.viewMode === "3d")) {
+    setViewMode(saved.viewMode, true);
+  }
   if (saved && saved.colors) {
     colors = { ...DEFAULT_COLORS, ...saved.colors };
     if (saved.activeColorKey && colors[saved.activeColorKey]) {
@@ -1356,6 +1775,11 @@ FO`,
     renderYarnPalette();
     syncColorPicker();
     reparse(false);
+  }
+  if (saved && saved.pattern && saved.activePreset === "custom") {
+    textareaEl.value = saved.pattern;
+    if (saved.title) titleEl.value = saved.title;
+    reparse(true);
   }
   resize();
 })();

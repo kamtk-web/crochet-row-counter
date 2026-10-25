@@ -709,6 +709,47 @@
     width: 100%;
     accent-color: var(--accent);
   }
+
+  .sim-mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .sim-mode-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-right: 2px;
+  }
+  .sim-mode-toggle {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .sim-mode-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 10px 16px;
+    min-height: 44px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .sim-mode-toggle button.on {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .sim-mode-hint {
+    font-size: 0.78rem;
+    color: var(--faint);
+    flex: 1 1 160px;
+  }
   .sim-color-picker-hidden {
     position: absolute;
     width: 1px; height: 1px;
@@ -847,7 +888,16 @@
       <div class="sim-layout">
         <div>
           <p class="sim-hero">寫好織圖，睇住佢一針一針織出嚟</p>
-          <p class="sim-hero-sub">跟 Gurumi 嗰種：上面寫圖案、下面逐針模擬。本頁係自製版，唔係 gurumi.app。</p>
+          <p class="sim-hero-sub">立體跟 Gurumi 一層一層；平面係由中心向外嘅圓形圖解／實物預覽。本頁係自製版，唔係 gurumi.app。</p>
+        </div>
+
+        <div class="sim-mode-row" role="group" aria-label="模擬模式">
+          <span class="sim-mode-label">模式</span>
+          <div class="sim-mode-toggle" id="simModeToggle">
+            <button type="button" id="simMode3d" class="on" data-mode="3d" aria-pressed="true">立體</button>
+            <button type="button" id="simModeFlat" data-mode="flat" aria-pressed="false">平面</button>
+          </div>
+          <span class="sim-mode-hint" id="simModeHint">立體：層層疊 3D · 平面：由中心向外填圖</span>
         </div>
 
         <div class="chip-row" id="simPresets"></div>
@@ -881,7 +931,7 @@
           <div class="sim-parse" id="simParse" aria-live="polite"></div>
         </div>
 
-        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="拖曳轉角度 · 雙指縮放 · 滾輪縮放" style="padding:0">
+        <div class="card sim-canvas-wrap" id="simCanvasWrap" title="立體：拖曳轉角度 · 平面：拖曳平移 · 雙指／滾輪縮放" style="padding:0">
           <canvas id="simCanvas" width="400" height="420"></canvas>
           <div class="sim-zoom-bar" id="simZoomBar" aria-label="縮放">
             <button type="button" id="simZoomIn" title="放大" onclick="window.__simZoom&&window.__simZoom(1.25);return false;">＋</button>
@@ -913,8 +963,9 @@
 
         <p class="note" style="font-size:0.82rem;line-height:1.55;margin:0">
           支援：<code>6 sc in MR</code>、<code>inc x6</code>、<code>(sc, inc) x6</code>、<code>(2 sc, dec) x6</code>、<code>sc around</code>、<code>Rnds 5-8:</code>、<code>change to B</code>。針數唔對會提示。
-          靈感：<a href="https://www.instagram.com/reel/Dex4g6oiJ-D/" target="_blank" rel="noopener noreferrer">@gurumiapp</a>
-          （<a href="https://gurumi.app" target="_blank" rel="noopener noreferrer">gurumi.app</a>）。
+          立體靈感：<a href="https://www.instagram.com/reel/Dex4g6oiJ-D/" target="_blank" rel="noopener noreferrer">@gurumiapp</a>
+          （<a href="https://gurumi.app" target="_blank" rel="noopener noreferrer">gurumi.app</a>）；
+          平面靈感：<a href="https://www.instagram.com/p/De4MwUIm091/" target="_blank" rel="noopener noreferrer">@yarnissyarniss 花曼陀羅</a>。
         </p>
       </div>
     </section>
@@ -1352,6 +1403,6 @@
 
 })();
 </script>
-<script src="sim.js?v=668b789"></script>
+<script src="sim.js?v=aab007c"></script>
 </body>
 </html>
