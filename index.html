@@ -558,6 +558,135 @@
     padding: 4px 8px;
     pointer-events: none;
   }
+
+  .sim-lt .tok-rnd { color: #7eb8ff; font-weight: 700; }
+  .sim-lt .tok-st { color: #8ee0b0; }
+  .sim-lt .tok-inc { color: #f0a03a; font-weight: 700; }
+  .sim-lt .tok-dec { color: #e07a9a; font-weight: 700; }
+  .sim-lt .tok-num { color: #e8d5b5; }
+  .sim-lt .tok-color { color: #e07a3a; font-weight: 800; }
+  .sim-lt .tok-piece { color: #c4b5fd; font-weight: 700; }
+  .sim-lt .tok-fo { color: var(--faint); font-style: italic; }
+  .sim-lt .tok-paren { color: var(--faint); }
+  .sim-upload {
+    display: grid;
+    gap: 10px;
+    padding: 14px !important;
+  }
+  .sim-upload-label {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .sim-upload-sub {
+    font-size: 0.75rem;
+    color: var(--faint);
+    line-height: 1.45;
+    margin: -4px 0 0;
+  }
+  .sim-upload-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .sim-upload-row .fat {
+    flex: 1 1 120px;
+    min-height: 44px;
+    font-size: 0.9rem;
+  }
+  .sim-upload-file {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+    overflow: hidden;
+  }
+  .sim-upload-preview {
+    display: none;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--surface-float);
+    border: 1px solid var(--line);
+  }
+  .sim-upload-preview.on { display: grid; }
+  .sim-upload-thumb {
+    width: 72px; height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #1a1612;
+    border: 1px solid var(--line);
+  }
+  .sim-upload-meta {
+    display: grid;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .sim-upload-meta strong { color: var(--ink); font-weight: 700; }
+  .sim-upload-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(224,122,58,0.18);
+    color: var(--accent);
+    margin-right: 4px;
+  }
+  .sim-upload-badge.manual {
+    background: rgba(126,184,255,0.15);
+    color: #7eb8ff;
+  }
+  .sim-upload-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sim-upload-actions .fat { flex: 1 1 100px; min-height: 42px; font-size: 0.85rem; }
+  .sim-upload-drop {
+    border: 1.5px dashed rgba(240,230,216,0.22);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: rgba(0,0,0,0.12);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .sim-upload-drop.drag {
+    border-color: var(--accent);
+    background: rgba(224,122,58,0.1);
+    color: var(--ink);
+  }
+  .sim-editor-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 14px 8px;
+  }
+  .sim-editor-tools button {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-float);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .sim-editor-tools button:active { transform: scale(0.96); }
+  .sim-total .sim-total-warn {
+    color: #e07a9a;
+    margin-left: 6px;
+    font-size: 0.75rem;
+  }
+
   .sim-parse {
     margin: 0;
     font-size: 0.78rem;
@@ -888,7 +1017,7 @@
       <div class="sim-layout">
         <div>
           <p class="sim-hero">寫好織圖，睇住佢一針一針織出嚟</p>
-          <p class="sim-hero-sub">立體跟 Gurumi 一層一層；平面係由中心向外嘅圓形圖解／實物預覽。本頁係自製版，唔係 gurumi.app。</p>
+          <p class="sim-hero-sub">立體更厚毛冷扣環；平面由中心向外。可編輯織圖、上載成品／圖紙抽色。本頁自製，唔係 Knotly／gurumi.app。</p>
         </div>
 
         <div class="sim-mode-row" role="group" aria-label="模擬模式">
@@ -917,12 +1046,39 @@
           </label>
         </div>
 
+
+        <div class="card sim-upload" id="simUploadPanel">
+          <div class="sim-upload-label">上載圖紙／成品相</div>
+          <p class="sim-upload-sub">自動：抽出主色入 A–F。跟圖紙會填入可改嘅起步織圖（唔係完整 OCR）。你可再貼／改文字織圖。</p>
+          <div class="sim-upload-drop" id="simUploadDrop" tabindex="0" role="button" aria-label="上載或貼上圖片">
+            撳呢度揀相 · 或者拖曳入嚟 · 或者喺呢度 Ctrl/⌘+V 貼上
+          </div>
+          <input class="sim-upload-file" type="file" id="simUploadFile" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="揀圖片檔">
+          <div class="sim-upload-preview" id="simUploadPreview">
+            <img class="sim-upload-thumb" id="simUploadThumb" alt="參考圖">
+            <div class="sim-upload-meta">
+              <div><span class="sim-upload-badge" id="simUploadAutoBadge">自動</span><strong id="simUploadStatus">未上載</strong></div>
+              <div id="simUploadColorNote">上載後會顯示抽出嘅毛冷色</div>
+              <div class="sim-upload-actions">
+                <button class="fat ok" type="button" id="simUploadApplyFlat">跟圖紙 · 平面圓</button>
+                <button class="fat quiet" type="button" id="simUploadApply3d">跟圖紙 · 立體球</button>
+                <button class="fat quiet" type="button" id="simUploadClear">清除參考</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card sim-editor">
           <div class="sim-editor-head">
             <input class="sim-title" id="simTitle" type="text" value="餅乾夾心貓" maxlength="40" aria-label="作品名稱">
             <div class="sim-total" id="simTotal">0 針</div>
           </div>
-          <p class="sim-editor-hint">撳下面編輯織圖；播放緊會用薄荷綠色標示而家嗰行。</p>
+          <p class="sim-editor-hint">撳下面編輯織圖（US：MR / sc / hdc / dc / ch / inc / dec / sl st · 色 A–F）。播放緊會用薄荷綠色標示而家嗰行；未聚焦時有簡單語法著色。</p>
+          <div class="sim-editor-tools" aria-label="織圖工具">
+            <button type="button" id="simInsertSphereTpl" title="插入立體球起步">＋立體球模板</button>
+            <button type="button" id="simInsertFlatTpl" title="插入平面圓起步">＋平面圓模板</button>
+            <button type="button" id="simReparseBtn" title="重新解析">重新計針</button>
+          </div>
           <div class="sim-editor-body">
             <textarea class="sim-pattern-raw" id="simPattern" spellcheck="false" aria-label="織圖" placeholder="Body, with A:&#10;Rnd 1: 6 sc in MR (6)&#10;Rnd 2: inc x6 (12)"></textarea>
             <div class="sim-lines" id="simLines" aria-hidden="true"></div>
@@ -962,7 +1118,7 @@
         </div>
 
         <p class="note" style="font-size:0.82rem;line-height:1.55;margin:0">
-          支援：<code>6 sc in MR</code>、<code>inc x6</code>、<code>(sc, inc) x6</code>、<code>(2 sc, dec) x6</code>、<code>sc around</code>、<code>Rnds 5-8:</code>、<code>change to B</code>。針數唔對會提示。
+          支援：<code>MR</code>、<code>sc/hdc/dc/ch/sl st</code>、<code>inc/dec</code>、<code>(sc, inc) x6</code>、<code>sc around</code>、<code>Rnds 5-8:</code>、<code>change to B</code>。可上載相抽色＋跟圖紙起步。針數唔對會提示。
           立體靈感：<a href="https://www.instagram.com/reel/Dex4g6oiJ-D/" target="_blank" rel="noopener noreferrer">@gurumiapp</a>
           （<a href="https://gurumi.app" target="_blank" rel="noopener noreferrer">gurumi.app</a>）；
           平面靈感：<a href="https://www.instagram.com/p/De4MwUIm091/" target="_blank" rel="noopener noreferrer">@yarnissyarniss 花曼陀羅</a>。
@@ -1403,6 +1559,6 @@
 
 })();
 </script>
-<script src="sim.js?v=0125193"></script>
+<script src="sim.js?v=516bea4"></script>
 </body>
 </html>

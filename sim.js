@@ -273,8 +273,28 @@ FO`,
                 for (let j = 0; j < n; j++) {
                   pushStitch("dec", lineIndex, round, made); made++;
                 }
-              } else if ((pm = p.match(/^(\d+)\s*(?:sc|短針)?$/i)) || (pm = p.match(/^(?:sc|短針)$/i))) {
+              } else if ((pm = p.match(/^(\d+)\s*(?:sc|短針)$/i)) || (pm = p.match(/^(?:sc|短針)$/i))) {
                 const n = pm && pm[1] ? +pm[1] : 1;
+                for (let j = 0; j < n; j++) {
+                  pushStitch("sc", lineIndex, round, made); made++;
+                }
+              } else if ((pm = p.match(/^(\d+)\s*(?:hdc|中長針)$/i)) || (pm = p.match(/^(?:hdc|中長針)$/i))) {
+                const n = pm && pm[1] ? +pm[1] : 1;
+                for (let j = 0; j < n; j++) {
+                  pushStitch("hdc", lineIndex, round, made); made++;
+                }
+              } else if ((pm = p.match(/^(\d+)\s*(?:dc|長針)$/i)) || (pm = p.match(/^(?:dc|長針)$/i))) {
+                const n = pm && pm[1] ? +pm[1] : 1;
+                for (let j = 0; j < n; j++) {
+                  pushStitch("dc", lineIndex, round, made); made++;
+                }
+              } else if ((pm = p.match(/^(\d+)\s*(?:ch|鎖針)$/i)) || (pm = p.match(/^(?:ch|鎖針)$/i))) {
+                const n = pm && pm[1] ? +pm[1] : 1;
+                for (let j = 0; j < n; j++) {
+                  pushStitch("ch", lineIndex, round, made); made++;
+                }
+              } else if ((pm = p.match(/^(\d+)\s*(?:sc|短針)?$/i))) {
+                const n = +pm[1];
                 for (let j = 0; j < n; j++) {
                   pushStitch("sc", lineIndex, round, made); made++;
                 }
@@ -329,6 +349,54 @@ FO`,
           continue;
         }
 
+        // N hdc / hdc / 中長針
+        m = t.match(/^(\d+)\s*(?:hdc|中長針)$/i);
+        if (m) {
+          const n = +m[1];
+          for (let i = 0; i < n; i++) { pushStitch("hdc", lineIndex, round, made); made++; }
+          continue;
+        }
+        if (/^(?:hdc|中長針)$/i.test(t)) {
+          pushStitch("hdc", lineIndex, round, made); made++;
+          continue;
+        }
+
+        // N dc / dc / 長針
+        m = t.match(/^(\d+)\s*(?:dc|長針)$/i);
+        if (m) {
+          const n = +m[1];
+          for (let i = 0; i < n; i++) { pushStitch("dc", lineIndex, round, made); made++; }
+          continue;
+        }
+        if (/^(?:dc|長針)$/i.test(t)) {
+          pushStitch("dc", lineIndex, round, made); made++;
+          continue;
+        }
+
+        // N ch / ch / 鎖針
+        m = t.match(/^(\d+)\s*(?:ch|鎖針)$/i);
+        if (m) {
+          const n = +m[1];
+          for (let i = 0; i < n; i++) { pushStitch("ch", lineIndex, round, made); made++; }
+          continue;
+        }
+        if (/^(?:ch|鎖針)$/i.test(t)) {
+          pushStitch("ch", lineIndex, round, made); made++;
+          continue;
+        }
+
+        // hdc/dc around
+        if (/^(?:hdc|中長針)\s*around$/i.test(t)) {
+          const n = prevCount || 6;
+          for (let i = 0; i < n; i++) { pushStitch("hdc", lineIndex, round, made); made++; }
+          continue;
+        }
+        if (/^(?:dc|長針)\s*around$/i.test(t)) {
+          const n = prevCount || 6;
+          for (let i = 0; i < n; i++) { pushStitch("dc", lineIndex, round, made); made++; }
+          continue;
+        }
+
         // bare number = that many sc
         m = t.match(/^(\d+)$/);
         if (m) {
@@ -369,10 +437,28 @@ FO`,
         s = s.slice(cm[0].length).trim();
       }
 
-      // special: "sc around"
+      // special: "sc/hdc/dc around"
       if (/^(?:sc|短針)\s*around$/i.test(s) || /^sc\s*around$/i.test(s)) {
         const n = prevCount || 6;
         for (let i = 0; i < n; i++) pushStitch("sc", lineIndex, round, i);
+        if (expected != null && n !== expected) {
+          reports.push({ line: lineIndex + 1, level: "warn", msg: "針數唔夾：計到 " + n + "，括號寫 " + expected });
+        }
+        prevCount = n;
+        return n;
+      }
+      if (/^(?:hdc|中長針)\s*around$/i.test(s)) {
+        const n = prevCount || 6;
+        for (let i = 0; i < n; i++) pushStitch("hdc", lineIndex, round, i);
+        if (expected != null && n !== expected) {
+          reports.push({ line: lineIndex + 1, level: "warn", msg: "針數唔夾：計到 " + n + "，括號寫 " + expected });
+        }
+        prevCount = n;
+        return n;
+      }
+      if (/^(?:dc|長針)\s*around$/i.test(s)) {
+        const n = prevCount || 6;
+        for (let i = 0; i < n; i++) pushStitch("dc", lineIndex, round, i);
         if (expected != null && n !== expected) {
           reports.push({ line: lineIndex + 1, level: "warn", msg: "針數唔夾：計到 " + n + "，括號寫 " + expected });
         }
@@ -502,8 +588,8 @@ FO`,
 
   /* ——— Geometry ——— */
   // Middle ground: lightly interlocking Vs (not sparse cage, not fat mush)
-  const STITCH_ARC = 0.46; // arc length per stitch → radius
-  const STITCH_H = 0.40;   // vertical pitch between rounds
+  const STITCH_ARC = 0.44; // arc length per stitch → radius (tighter fabric)
+  const STITCH_H = 0.38;   // vertical pitch between rounds
 
   function layoutStitches(stitches) {
     // Discrete stacked rounds (層層疊): one shared height per round, then step up
@@ -904,8 +990,15 @@ FO`,
 
   function renderParse() {
     const rows = parsed.reports.filter((r) => r.level !== "skip" && r.msg);
+    const warns = parsed.reports.filter((r) => r.level === "warn" || r.level === "bad");
+    if (totalEl) {
+      const base = (playing || cursor > 0 ? Math.min(cursor, laid.length) : laid.length) + " 針";
+      totalEl.innerHTML = warns.length
+        ? base + "<span class='sim-total-warn'>· " + warns.length + " 處要睇</span>"
+        : base;
+    }
     if (!rows.length) {
-      parseEl.innerHTML = "<div class='row ok'>未有提示</div>";
+      parseEl.innerHTML = "<div class='row ok'>織圖 OK · 共 " + parsed.total + " 針</div>";
       return;
     }
     parseEl.innerHTML = rows.map((r) => {
@@ -920,12 +1013,31 @@ FO`,
     return st ? st.lineIndex : -1;
   }
 
+  function highlightPatternLine(line) {
+    if (!line) return " ";
+    let s = escapeHtml(line);
+    // order matters: longer / specific first
+    s = s.replace(/\b(Rnds?|Rounds?|Rnd|Round|第)\b/gi, '<span class="tok-rnd">$1</span>');
+    s = s.replace(/\b(change\s+to|with)\s+([A-F])\b/gi, '<span class="tok-color">$1 $2</span>');
+    s = s.replace(/\b(FO|finish\s*off)\b/gi, '<span class="tok-fo">$1</span>');
+    s = s.replace(/\b(inc|加針)\b/gi, '<span class="tok-inc">$1</span>');
+    s = s.replace(/\b(dec|減針|sc3tog)\b/gi, '<span class="tok-dec">$1</span>');
+    s = s.replace(/\b(hdc|dc|sc|ch|sl\s*st|ss|短針|中長針|長針|鎖針|滑針|MR|magic\s*ring|魔術環)\b/gi, '<span class="tok-st">$1</span>');
+    s = s.replace(/\b(\d+)\b/g, '<span class="tok-num">$1</span>');
+    s = s.replace(/([()])/g, '<span class="tok-paren">$1</span>');
+    // piece header leftover: Name, …
+    if (/^[^:<]*[,：:]/.test(line) && /with/i.test(line)) {
+      s = s.replace(/^([^,<]+)/, '<span class="tok-piece">$1</span>');
+    }
+    return s;
+  }
+
   function renderLines() {
     const rawLines = String(textareaEl.value || "").split(/\r?\n/);
     const active = activeLineIndex();
     const html = rawLines.map((line, i) => {
       const cls = i === active ? "sim-line on" : "sim-line";
-      return "<div class='" + cls + "' data-i='" + i + "'><span class='sim-ln'>" + (i + 1) + "</span><span class='sim-lt'>" + escapeHtml(line || " ") + "</span></div>";
+      return "<div class='" + cls + "' data-i='" + i + "'><span class='sim-ln'>" + (i + 1) + "</span><span class='sim-lt'>" + highlightPatternLine(line || "") + "</span></div>";
     }).join("");
     linesEl.innerHTML = html || "<div class='sim-line'><span class='sim-ln'>1</span><span class='sim-lt'></span></div>";
 
@@ -1072,126 +1184,204 @@ FO`,
 
   function drawYarnStitch(p, scale, isActive, parent, left) {
     const depthNorm = Math.max(0, Math.min(1, (p.depth + 8) / 16));
-    // Footprint tracks spacing, but clamp px so early rounds / high zoom stay readable Vs
-    const sRaw = scale * STITCH_ARC * 0.98;
-    const s = Math.max(3.2, Math.min(20, sRaw)) * (0.85 + 0.25 * depthNorm);
+    const kind = p.kind || "sc";
+    const tall = kind === "dc" ? 1.28 : kind === "hdc" ? 1.12 : kind === "ch" || kind === "sl" ? 0.72 : 1;
+    // Footprint tracks spacing; thicker yarn tubes toward Knotly-like fabric
+    const sRaw = scale * STITCH_ARC * 1.05;
+    const s = Math.max(3.6, Math.min(22, sRaw)) * (0.88 + 0.22 * depthNorm) * tall;
     const col = p.color;
-    const dark = shade(col, -0.26);
-    const mid = shade(col, -0.1);
-    const light = shade(col, 0.2);
+    const dark = shade(col, -0.32);
+    const mid = shade(col, -0.12);
+    const light = shade(col, 0.22);
+    const hi = shade(col, 0.38);
 
     let ax = p.sx;
-    let ay = p.sy + s * 0.88;
+    let ay = p.sy + s * 0.92;
     if (parent) {
-      ax = parent.sx * 0.35 + p.sx * 0.65;
-      ay = parent.sy - s * 0.12; // hook into parent top bar
+      ax = parent.sx * 0.32 + p.sx * 0.68;
+      ay = parent.sy - s * 0.02;
     }
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    const topY = p.sy - s * 0.22;
-    const halfW = s * 0.50; // abut neighbours lightly
+    const topY = p.sy - s * 0.18;
+    const halfW = s * 0.54;
     const lx = p.sx - halfW;
     const rx = p.sx + halfW;
+    const lw = Math.max(2.2, s * 0.42); // thick yarn body
 
-    // Soft underside shadow
+    // Soft contact shadow under stitch (fabric AO)
     ctx.beginPath();
-    ctx.ellipse(p.sx, (ay + p.sy) * 0.55, s * 0.42, s * 0.16, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(42,36,28," + (0.04 + 0.05 * (1 - depthNorm)) + ")";
+    ctx.ellipse(p.sx, (ay + p.sy) * 0.52, s * 0.48, s * 0.18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(20,16,12," + (0.08 + 0.1 * (1 - depthNorm)) + ")";
     ctx.fill();
 
-    // Very light V fill (readable holes, not opaque blob)
+    // Soft yarn fill between posts (reads as fabric surface, not cage)
     ctx.beginPath();
-    ctx.moveTo(lx + s * 0.06, topY);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(rx - s * 0.06, topY);
+    ctx.moveTo(lx + s * 0.04, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.08, p.sy + s * 0.05, ax - s * 0.02, ay);
+    ctx.quadraticCurveTo(p.sx + s * 0.08, p.sy + s * 0.05, rx - s * 0.04, topY);
     ctx.closePath();
-    ctx.fillStyle = shade(col, 0.08);
-    ctx.globalAlpha = 0.28 + 0.12 * depthNorm;
+    const g = ctx.createLinearGradient(lx, topY, rx, ay);
+    g.addColorStop(0, mid);
+    g.addColorStop(0.45, col);
+    g.addColorStop(1, dark);
+    ctx.fillStyle = g;
+    ctx.globalAlpha = 0.55 + 0.2 * depthNorm;
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Classic thinner posts
-    const lw = Math.max(1.6, s * 0.30);
+    // Under-stroke (dark yarn edge)
     ctx.strokeStyle = dark;
+    ctx.lineWidth = lw + 1.4;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(lx + s * 0.02, topY + 0.5);
+    ctx.quadraticCurveTo(p.sx - s * 0.14, p.sy + s * 0.18, ax - s * 0.04, ay + 0.6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(rx - s * 0.02, topY + 0.5);
+    ctx.quadraticCurveTo(p.sx + s * 0.14, p.sy + s * 0.18, ax + s * 0.04, ay + 0.6);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Main left / right posts (thick interlocking legs)
+    ctx.strokeStyle = mid;
     ctx.lineWidth = lw;
     ctx.beginPath();
-    ctx.moveTo(lx + s * 0.04, topY);
-    ctx.quadraticCurveTo(p.sx - s * 0.12, p.sy + s * 0.12, ax - s * 0.03, ay);
+    ctx.moveTo(lx + s * 0.02, topY);
+    ctx.quadraticCurveTo(p.sx - s * 0.12, p.sy + s * 0.14, ax - s * 0.03, ay);
     ctx.stroke();
 
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(rx - s * 0.02, topY);
+    ctx.quadraticCurveTo(p.sx + s * 0.12, p.sy + s * 0.14, ax + s * 0.03, ay);
+    ctx.stroke();
+
+    // Highlight ridge along posts (soft shading / yarn twist hint)
     ctx.strokeStyle = light;
-    ctx.lineWidth = lw;
+    ctx.lineWidth = Math.max(1.1, lw * 0.32);
+    ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    ctx.moveTo(rx - s * 0.04, topY);
-    ctx.quadraticCurveTo(p.sx + s * 0.12, p.sy + s * 0.12, ax + s * 0.03, ay);
+    ctx.moveTo(lx + s * 0.08, topY + s * 0.02);
+    ctx.quadraticCurveTo(p.sx - s * 0.06, p.sy + s * 0.06, ax - s * 0.01, ay - s * 0.06);
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(rx - s * 0.08, topY + s * 0.02);
+    ctx.quadraticCurveTo(p.sx + s * 0.06, p.sy + s * 0.06, ax + s * 0.01, ay - s * 0.06);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // Small lock through parent (緊扣 hint, not a thick tube)
+    // Lock through parent top chain (interlocking loop)
     if (parent) {
-      ctx.strokeStyle = mid;
-      ctx.lineWidth = Math.max(1.4, s * 0.22);
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(2.0, s * 0.34);
       ctx.beginPath();
-      ctx.moveTo(ax - s * 0.2, ay);
-      ctx.quadraticCurveTo(ax, ay + s * 0.08, ax + s * 0.2, ay);
+      ctx.ellipse(ax, ay - s * 0.02, s * 0.28, s * 0.16, 0, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+      ctx.strokeStyle = light;
+      ctx.lineWidth = Math.max(1.2, s * 0.18);
+      ctx.beginPath();
+      ctx.ellipse(ax, ay - s * 0.04, s * 0.22, s * 0.12, 0, 0.3, Math.PI - 0.3);
       ctx.stroke();
 
-      const psRaw = scale * STITCH_ARC * 0.98;
-      const ps = Math.max(3.2, Math.min(20, psRaw)) * (0.85 + 0.25 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
-      const pty = parent.sy - ps * 0.22;
+      // redraw a bite of parent chain so it looks threaded
+      const psRaw = scale * STITCH_ARC * 1.05;
+      const ps = Math.max(3.6, Math.min(22, psRaw)) * (0.88 + 0.22 * Math.max(0, Math.min(1, (parent.depth + 8) / 16)));
+      const pty = parent.sy - ps * 0.18;
       const phw = ps * 0.52;
-      ctx.strokeStyle = parent.color;
-      ctx.lineWidth = Math.max(1.5, ps * 0.28);
-      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = shade(parent.color, -0.08);
+      ctx.lineWidth = Math.max(2.0, ps * 0.36);
+      ctx.globalAlpha = 0.9;
       ctx.beginPath();
-      ctx.moveTo(parent.sx - phw * 0.55, pty);
-      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.28, parent.sx + phw * 0.55, pty);
+      ctx.moveTo(parent.sx - phw * 0.6, pty);
+      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.34, parent.sx + phw * 0.6, pty);
+      ctx.stroke();
+      ctx.strokeStyle = shade(parent.color, 0.25);
+      ctx.lineWidth = Math.max(1.1, ps * 0.16);
+      ctx.beginPath();
+      ctx.moveTo(parent.sx - phw * 0.45, pty - 0.5);
+      ctx.quadraticCurveTo(parent.sx, pty - ps * 0.28, parent.sx + phw * 0.45, pty - 0.5);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    // Top bar / chain loops — thinner
-    ctx.strokeStyle = shade(col, -0.12);
-    ctx.lineWidth = Math.max(1.3, s * 0.24);
+    // Top chain loops — thicker interlocking ovals
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(2.0, s * 0.34);
     ctx.beginPath();
-    ctx.ellipse(p.sx - s * 0.14, topY - s * 0.02, s * 0.2, s * 0.11, -0.12, 0, Math.PI * 2);
+    ctx.ellipse(p.sx - s * 0.16, topY - s * 0.02, s * 0.24, s * 0.14, -0.15, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(p.sx + s * 0.14, topY - s * 0.02, s * 0.2, s * 0.11, 0.12, 0, Math.PI * 2);
+    ctx.ellipse(p.sx + s * 0.16, topY - s * 0.02, s * 0.24, s * 0.14, 0.15, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = col;
-    ctx.lineWidth = Math.max(1.6, s * 0.3);
+    ctx.lineWidth = Math.max(1.6, s * 0.26);
     ctx.beginPath();
-    ctx.moveTo(lx, topY);
-    ctx.quadraticCurveTo(p.sx, topY - s * 0.3, rx, topY);
+    ctx.ellipse(p.sx - s * 0.16, topY - s * 0.03, s * 0.18, s * 0.1, -0.15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(p.sx + s * 0.16, topY - s * 0.03, s * 0.18, s * 0.1, 0.15, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Light neighbour bridge
+    // Top bar bridging loops
+    ctx.strokeStyle = mid;
+    ctx.lineWidth = Math.max(2.2, s * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(lx, topY);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.36, rx, topY);
+    ctx.stroke();
+    ctx.strokeStyle = hi;
+    ctx.lineWidth = Math.max(1.1, s * 0.16);
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(lx + s * 0.06, topY - 0.8);
+    ctx.quadraticCurveTo(p.sx, topY - s * 0.3, rx - s * 0.06, topY - 0.8);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Neighbour bridge — shared top chain abut
     if (left) {
-      const lTop = left.sy - s * 0.22;
+      const lTop = left.sy - s * 0.18;
       const midX = (left.sx + p.sx) / 2;
-      const midY = (lTop + topY) / 2 - s * 0.04;
-      ctx.strokeStyle = mid;
-      ctx.lineWidth = Math.max(1.4, s * 0.24);
+      const midY = (lTop + topY) / 2 - s * 0.06;
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(2.0, s * 0.32);
       ctx.beginPath();
-      ctx.moveTo(left.sx + halfW * 0.65, lTop);
-      ctx.quadraticCurveTo(midX, midY - s * 0.06, lx, topY);
+      ctx.moveTo(left.sx + halfW * 0.55, lTop);
+      ctx.quadraticCurveTo(midX, midY - s * 0.08, lx, topY);
+      ctx.stroke();
+      ctx.strokeStyle = light;
+      ctx.lineWidth = Math.max(1.1, s * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(left.sx + halfW * 0.5, lTop - 0.6);
+      ctx.quadraticCurveTo(midX, midY - s * 0.1, lx + 1, topY - 0.6);
       ctx.stroke();
     }
 
-    if (p.kind === "inc") {
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
+    if (kind === "inc") {
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy - s * 0.02, s * 0.08, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy - s * 0.02, s * 0.09, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (isActive) {
-      ctx.strokeStyle = "rgba(226,59,47,0.4)";
-      ctx.lineWidth = 1.4;
+    if (kind === "ch" || kind === "sl") {
+      // flatter chain / slip look — mute posts a bit already via tall factor
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, s * 0.7, 0, Math.PI * 2);
+      ctx.ellipse(p.sx, topY, s * 0.35, s * 0.12, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (isActive) {
+      ctx.strokeStyle = "rgba(226,59,47,0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, s * 0.72, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
@@ -1751,6 +1941,355 @@ FO`,
     if (panel.classList.contains("active")) resize();
   });
 
+
+  /* ——— Upload chart / photo → colors + starter pattern ——— */
+  let refImageDataUrl = null;
+  let extractedHexes = [];
+
+  function rgbDist(a, b) {
+    return Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+  }
+  function hexFromRgb(r, g, b) {
+    return "#" + [r, g, b].map((c) => {
+      const h = Math.max(0, Math.min(255, c | 0)).toString(16);
+      return h.length === 1 ? "0" + h : h;
+    }).join("");
+  }
+  function isNearNeutralBg(r, g, b) {
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const sat = max === 0 ? 0 : (max - min) / max;
+    // very dark / very light / grayish studio bg
+    if (max < 28) return true;
+    if (min > 235) return true;
+    if (sat < 0.08 && (max > 200 || max < 60)) return true;
+    return false;
+  }
+
+  function extractDominantColorsFromImage(img, maxColors) {
+    const cap = Math.max(3, Math.min(6, maxColors || 6));
+    const c = document.createElement("canvas");
+    const size = 64;
+    c.width = size;
+    c.height = size;
+    const cx = c.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, size, size);
+    let data;
+    try {
+      data = cx.getImageData(0, 0, size, size).data;
+    } catch (e) {
+      return [];
+    }
+    const buckets = new Map();
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a < 140) continue;
+      let r = data[i], g = data[i + 1], b = data[i + 2];
+      if (isNearNeutralBg(r, g, b)) continue;
+      // quantize
+      r = (r >> 4) << 4;
+      g = (g >> 4) << 4;
+      b = (b >> 4) << 4;
+      const key = (r << 16) | (g << 8) | b;
+      const cur = buckets.get(key) || { r, g, b, n: 0 };
+      cur.n += 1;
+      buckets.set(key, cur);
+    }
+    const sorted = [...buckets.values()].sort((a, b) => b.n - a.n);
+    const picked = [];
+    for (const c0 of sorted) {
+      if (picked.length >= cap) break;
+      if (picked.some((p) => rgbDist(p, c0) < 42)) continue;
+      picked.push(c0);
+    }
+    // if too few, loosen and refill
+    if (picked.length < 2) {
+      for (const c0 of sorted) {
+        if (picked.length >= cap) break;
+        if (picked.some((p) => rgbDist(p, c0) < 18)) continue;
+        picked.push(c0);
+      }
+    }
+    return picked.map((c0) => hexFromRgb(c0.r, c0.g, c0.b));
+  }
+
+  function applyExtractedColors(hexes) {
+    extractedHexes = hexes.slice(0, 6);
+    const keys = "ABCDEF";
+    for (let i = 0; i < 6; i++) {
+      if (extractedHexes[i]) colors[keys[i]] = extractedHexes[i];
+    }
+    activeColorKey = "A";
+    renderSwatches();
+    renderYarnPalette();
+    syncColorPicker();
+    reparse(false);
+    persistSim();
+  }
+
+  function starterPattern(mode, title) {
+    const name = title || (mode === "flat" ? "跟圖紙・平面" : "跟圖紙・立體");
+    if (mode === "flat") {
+      const hasB = !!extractedHexes[1];
+      const lines = [
+        name + ", with A:",
+        "Rnd 1: 6 sc in MR (6)",
+        "Rnd 2: inc x6 (12)",
+        "Rnd 3: (sc, inc) x6 (18)",
+        "Rnd 4: (2 sc, inc) x6 (24)",
+        "Rnd 5: (3 sc, inc) x6 (30)",
+        "Rnd 6: (4 sc, inc) x6 (36)",
+      ];
+      if (hasB) {
+        lines.push(
+          "Rnd 7: change to B, (5 sc, inc) x6 (42)",
+          "Rnd 8: sc around (42)",
+          "Rnd 9: (6 sc, inc) x6 (48)",
+          "Rnd 10: sc around (48)"
+        );
+      } else {
+        lines.push(
+          "Rnd 7: (5 sc, inc) x6 (42)",
+          "Rnd 8: sc around (42)",
+          "Rnd 9: (6 sc, inc) x6 (48)",
+          "Rnd 10: sc around (48)"
+        );
+      }
+      lines.push("FO", "", "# 自動起步：按圓形圖紙／杯墊估。請改針數、色號同圈數對返你張圖。");
+      return lines.join("\n");
+    }
+    return [
+      name + ", with A:",
+      "Rnd 1: 6 sc in MR (6)",
+      "Rnd 2: inc x6 (12)",
+      "Rnd 3: (sc, inc) x6 (18)",
+      "Rnd 4: (2 sc, inc) x6 (24)",
+      "Rnds 5-8: sc around (24)",
+      "Rnd 9: (2 sc, dec) x6 (18)",
+      "Rnd 10: (sc, dec) x6 (12)",
+      "Rnd 11: dec x6 (6)",
+      "FO",
+      "",
+      "# 自動起步：按立體小球估。請貼你嘅文字織圖，或改圈數／inc dec。",
+    ].join("\n");
+  }
+
+
+  function updateUploadUI(statusText) {
+    const preview = document.getElementById("simUploadPreview");
+    const thumb = document.getElementById("simUploadThumb");
+    const status = document.getElementById("simUploadStatus");
+    const note = document.getElementById("simUploadColorNote");
+    if (!preview) return;
+    if (!refImageDataUrl) {
+      preview.classList.remove("on");
+      return;
+    }
+    preview.classList.add("on");
+    if (thumb) thumb.src = refImageDataUrl;
+    if (status) status.textContent = statusText || "已上載參考圖";
+    if (note) {
+      if (extractedHexes.length) {
+        note.innerHTML = "<span class='sim-upload-badge'>自動</span>已抽出 " +
+          extractedHexes.length + " 隻主色 → A–" + "ABCDEF"[Math.min(5, extractedHexes.length - 1)] +
+          "。<span class='sim-upload-badge manual'>手動</span>織圖請自己改或撳「跟圖紙」。";
+      } else {
+        note.innerHTML = "<span class='sim-upload-badge manual'>手動</span>抽唔到清楚主色，請用上面色板自設。";
+      }
+    }
+  }
+
+  function handleImageFile(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result || "");
+      const img = new Image();
+      img.onload = () => {
+        refImageDataUrl = url;
+        const hexes = extractDominantColorsFromImage(img, 6);
+        applyExtractedColors(hexes.length ? hexes : []);
+        activePreset = "custom";
+        renderPresets();
+        updateUploadUI(hexes.length ? "已抽色 · 參考圖" : "已上載 · 請手動揀色");
+        try {
+          const saved = loadPersistedSim() || {};
+          saved.refImage = url.slice(0, 180000); // keep modest
+          saved.extractedHexes = extractedHexes;
+          localStorage.setItem(SIM_STORE_KEY, JSON.stringify({
+            ...saved,
+            colors: colors,
+            activeColorKey: activeColorKey,
+            activePreset: activePreset,
+            viewMode: viewMode,
+            title: titleEl ? titleEl.value : "",
+            pattern: textareaEl ? textareaEl.value : patternText,
+          }));
+        } catch (e) {}
+      };
+      img.onerror = () => {
+        updateUploadUI("讀相失敗");
+      };
+      img.src = url;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function applyFollowChart(mode) {
+    const nextMode = mode === "flat" ? "flat" : "3d";
+    const t = (titleEl && titleEl.value && titleEl.value.trim()) || (nextMode === "flat" ? "跟圖紙・平面" : "跟圖紙・立體");
+    if (titleEl) titleEl.value = t;
+    const pat = starterPattern(nextMode, t);
+    textareaEl.value = pat;
+    patternText = pat;
+    activePreset = "custom";
+    renderPresets();
+    setViewMode(nextMode, false);
+    reparse(true);
+    persistSim();
+    updateUploadUI(nextMode === "flat" ? "已填平面起步織圖（可改）" : "已填立體起步織圖（可改）");
+  }
+
+  function clearUploadRef() {
+    refImageDataUrl = null;
+    extractedHexes = [];
+    updateUploadUI("");
+    try {
+      const saved = loadPersistedSim() || {};
+      delete saved.refImage;
+      delete saved.extractedHexes;
+      localStorage.setItem(SIM_STORE_KEY, JSON.stringify({
+        ...saved,
+        colors: colors,
+        activeColorKey: activeColorKey,
+        activePreset: activePreset,
+        viewMode: viewMode,
+        title: titleEl ? titleEl.value : "",
+        pattern: textareaEl ? textareaEl.value : patternText,
+      }));
+    } catch (e) {}
+  }
+
+  const uploadFile = document.getElementById("simUploadFile");
+  const uploadDrop = document.getElementById("simUploadDrop");
+  if (uploadDrop && uploadFile) {
+    uploadDrop.addEventListener("click", () => uploadFile.click());
+    uploadDrop.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        uploadFile.click();
+      }
+    });
+    uploadFile.addEventListener("change", () => {
+      const f = uploadFile.files && uploadFile.files[0];
+      if (f) handleImageFile(f);
+      uploadFile.value = "";
+    });
+    ["dragenter", "dragover"].forEach((ev) => {
+      uploadDrop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadDrop.classList.add("drag");
+      });
+    });
+    ["dragleave", "drop"].forEach((ev) => {
+      uploadDrop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadDrop.classList.remove("drag");
+      });
+    });
+    uploadDrop.addEventListener("drop", (e) => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) handleImageFile(f);
+    });
+    uploadDrop.addEventListener("paste", (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf("image") === 0) {
+          const f = items[i].getAsFile();
+          if (f) {
+            e.preventDefault();
+            handleImageFile(f);
+            break;
+          }
+        }
+      }
+    });
+  }
+  // also allow paste when panel focused
+  if (panel) {
+    panel.addEventListener("paste", (e) => {
+      if (!panel.classList.contains("active")) return;
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf("image") === 0) {
+          const f = items[i].getAsFile();
+          if (f) {
+            e.preventDefault();
+            handleImageFile(f);
+            break;
+          }
+        }
+      }
+    });
+  }
+  const btnFlat = document.getElementById("simUploadApplyFlat");
+  const btn3d = document.getElementById("simUploadApply3d");
+  const btnClear = document.getElementById("simUploadClear");
+  if (btnFlat) btnFlat.addEventListener("click", () => applyFollowChart("flat"));
+  if (btn3d) btn3d.addEventListener("click", () => applyFollowChart("3d"));
+  if (btnClear) btnClear.addEventListener("click", () => clearUploadRef());
+
+  const btnSph = document.getElementById("simInsertSphereTpl");
+  const btnFlt = document.getElementById("simInsertFlatTpl");
+  const btnRep = document.getElementById("simReparseBtn");
+  if (btnSph) btnSph.addEventListener("click", () => {
+    if (titleEl) titleEl.value = "小球";
+    textareaEl.value = [
+      "小球, with A:",
+      "Rnd 1: 6 sc in MR (6)",
+      "Rnd 2: inc x6 (12)",
+      "Rnd 3: (sc, inc) x6 (18)",
+      "Rnd 4: (2 sc, inc) x6 (24)",
+      "Rnds 5-8: sc around (24)",
+      "Rnd 9: (2 sc, dec) x6 (18)",
+      "Rnd 10: (sc, dec) x6 (12)",
+      "Rnd 11: dec x6 (6)",
+      "FO",
+    ].join("\n");
+    activePreset = "custom";
+    renderPresets();
+    setViewMode("3d", false);
+    reparse(true);
+    persistSim();
+  });
+  if (btnFlt) btnFlt.addEventListener("click", () => {
+    if (titleEl) titleEl.value = "平面圓";
+    textareaEl.value = [
+      "平面圓, with A:",
+      "Rnd 1: 8 sc in MR (8)",
+      "Rnd 2: inc x8 (16)",
+      "Rnd 3: (sc, inc) x8 (24)",
+      "Rnd 4: (2 sc, inc) x8 (32)",
+      "Rnd 5: (3 sc, inc) x8 (40)",
+      "Rnd 6: (4 sc, inc) x8 (48)",
+      "Rnds 7-8: sc around (48)",
+      "FO",
+    ].join("\n");
+    activePreset = "custom";
+    renderPresets();
+    setViewMode("flat", false);
+    reparse(true);
+    persistSim();
+  });
+  if (btnRep) btnRep.addEventListener("click", () => {
+    reparse(false);
+    persistSim();
+  });
+
+
   // init
   renderPresets();
   const saved = loadPersistedSim();
@@ -1780,6 +2319,11 @@ FO`,
     textareaEl.value = saved.pattern;
     if (saved.title) titleEl.value = saved.title;
     reparse(true);
+  }
+  if (saved && saved.refImage) {
+    refImageDataUrl = saved.refImage;
+    extractedHexes = Array.isArray(saved.extractedHexes) ? saved.extractedHexes : [];
+    updateUploadUI(extractedHexes.length ? "已還原參考圖 · 抽色" : "已還原參考圖");
   }
   resize();
 })();
